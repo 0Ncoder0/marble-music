@@ -3,6 +3,7 @@ import type { SceneManager } from '../scene/SceneManager.js';
 import type { ModeController } from './ModeController.js';
 import type { AudioEngine } from '../audio/AudioEngine.js';
 import type { PanelRenderer } from '../ui/PanelRenderer.js';
+import type { CameraFollowController } from '../physics/CameraFollowController.js';
 import type { CameraState, Entity, MusicBlock } from '../scene/types.js';
 
 /** 音名合法格式：A-G + 可选升降号(#/b) + 八度数字 0-9 */
@@ -27,10 +28,18 @@ export class InputController {
   private _getCameraState: (() => CameraState) | null = null;
   private _panelRenderer: PanelRenderer | null = null;
 
+  private _cameraController: CameraFollowController | null = null;
+
   private _isDragging = false;
   private _dragEntityId: string | null = null;
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
+
+  /** 中键拖拽或 Alt+左键拖拽：相机平移状态 */
+  private _isPanning = false;
+  private _panLastClientX = 0;
+  private _panLastClientY = 0;
+
   /** 是否已向 AudioEngine 发出首次 resume 请求 */
   private _firstInteractionDone = false;
 
@@ -53,6 +62,11 @@ export class InputController {
   /** 注入相机状态 getter，用于屏幕坐标→世界坐标转换 */
   setCameraStateGetter(getter: () => CameraState): void {
     this._getCameraState = getter;
+  }
+
+  /** 注入 CameraFollowController，实现滚轮缩放和中键/Alt+左键平移（T051） */
+  setCameraController(controller: CameraFollowController): void {
+    this._cameraController = controller;
   }
 
   /**
@@ -243,6 +257,16 @@ export class InputController {
   private _onMouseDown(e: MouseEvent): void {
     this._tryResumeAudio();
 
+    // 中键拖拽（button===1）或 Alt+左键（button===0 + altKey）：启动相机平移
+    // 编辑态和播放态均支持（FR-025）
+    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+      e.preventDefault();
+      this._isPanning = true;
+      this._panLastClientX = e.clientX;
+      this._panLastClientY = e.clientY;
+      return;
+    }
+
     if (e.button !== 0) return;
     if (this._locked) return;
 
@@ -284,6 +308,18 @@ export class InputController {
   }
 
   private _onMouseMove(e: MouseEvent): void {
+    // 相机平移（中键拖拽 / Alt+左键拖拽），编辑态和播放态均支持
+    if (this._isPanning && this._cameraController) {
+      const dx = e.clientX - this._panLastClientX;
+      const dy = e.clientY - this._panLastClientY;
+      this._panLastClientX = e.clientX;
+      this._panLastClientY = e.clientY;
+      const cam = this._getCameraState?.() ?? { zoom: 1, cx: 0, cy: 0, followBallId: null };
+      // 屏幕像素偏移 → 世界坐标偏移（取负：内容跟随鼠标移动）
+      this._cameraController.applyManualPan(-dx / cam.zoom, -dy / cam.zoom);
+      return;
+    }
+
     if (!this._isDragging || !this._dragEntityId) return;
     if (this._locked) {
       // 播放态：取消拖拽（双重保险）
@@ -298,12 +334,20 @@ export class InputController {
     });
   }
 
-  private _onMouseUp(_e: MouseEvent): void {
+  private _onMouseUp(e: MouseEvent): void {
+    // 中键或 Alt+左键释放：结束相机平移
+    if (e.button === 1 || (e.button === 0 && this._isPanning)) {
+      this._isPanning = false;
+    }
     this._isDragging = false;
     this._dragEntityId = null;
   }
 
-  private _onWheel(_e: WheelEvent): void {
-    // Phase 4 (T051): 相机缩放
+  private _onWheel(e: WheelEvent): void {
+    e.preventDefault();
+    if (this._cameraController) {
+      // 滚轮缩放：编辑态和播放态均支持（FR-025）
+      this._cameraController.applyZoom(-e.deltaY * 0.001);
+    }
   }
 }

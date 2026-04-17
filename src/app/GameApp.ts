@@ -3,14 +3,17 @@ import { InputController } from './InputController.js';
 import { SceneManager } from '../scene/SceneManager.js';
 import { PhysicsWorld } from '../physics/PhysicsWorld.js';
 import { PredictionEngine } from '../physics/PredictionEngine.js';
+import { CameraFollowController } from '../physics/CameraFollowController.js';
 import { AudioEngine } from '../audio/AudioEngine.js';
 import { PianoSynth } from '../audio/PianoSynth.js';
 import { CanvasRenderer } from '../ui/CanvasRenderer.js';
 import { TimelineStaffRenderer } from '../ui/TimelineStaffRenderer.js';
 import { PanelRenderer } from '../ui/PanelRenderer.js';
 import { HudRenderer } from '../ui/HudRenderer.js';
+import { LocalSaveRepository } from '../persistence/LocalSaveRepository.js';
+import { createEmptyScene } from '../persistence/SceneSerializer.js';
 import { PHYSICS_CONFIG } from '../constants.js';
-import type { CameraState, Scene } from '../scene/types.js';
+import type { Scene, SaveStatus } from '../scene/types.js';
 
 export class GameApp {
   private readonly _modeController: ModeController;
@@ -18,16 +21,18 @@ export class GameApp {
   private readonly _inputController: InputController;
   private readonly _physicsWorld: PhysicsWorld;
   private readonly _predictionEngine: PredictionEngine;
+  private readonly _cameraController: CameraFollowController;
   private readonly _audioEngine: AudioEngine;
   private readonly _audioCtx: AudioContext;
   private readonly _canvasRenderer: CanvasRenderer;
   private readonly _timelineRenderer: TimelineStaffRenderer;
   private readonly _panelRenderer: PanelRenderer;
   private readonly _hudRenderer: HudRenderer;
-  private readonly _camera: CameraState;
+  private readonly _localSaveRepo: LocalSaveRepository;
 
   private _rafId = 0;
   private _lastTimestamp = 0;
+  private _currentSaveStatus: SaveStatus = 'idle';
   /** 进入播放态前的场景深拷贝快照，退出时用于恢复实体初始位置 */
   private _playSnapshot: Scene | null = null;
 
@@ -37,26 +42,28 @@ export class GameApp {
     inputController: InputController,
     physicsWorld: PhysicsWorld,
     predictionEngine: PredictionEngine,
+    cameraController: CameraFollowController,
     audioEngine: AudioEngine,
     audioCtx: AudioContext,
     canvasRenderer: CanvasRenderer,
     timelineRenderer: TimelineStaffRenderer,
     panelRenderer: PanelRenderer,
     hudRenderer: HudRenderer,
-    camera: CameraState,
+    localSaveRepo: LocalSaveRepository,
   ) {
     this._modeController = modeController;
     this._sceneManager = sceneManager;
     this._inputController = inputController;
     this._physicsWorld = physicsWorld;
     this._predictionEngine = predictionEngine;
+    this._cameraController = cameraController;
     this._audioEngine = audioEngine;
     this._audioCtx = audioCtx;
     this._canvasRenderer = canvasRenderer;
     this._timelineRenderer = timelineRenderer;
     this._panelRenderer = panelRenderer;
     this._hudRenderer = hudRenderer;
-    this._camera = camera;
+    this._localSaveRepo = localSaveRepo;
 
     // 订阅模式变更（同步触发）
     this._modeController.onModeChange((mode) => {
@@ -105,12 +112,17 @@ export class GameApp {
     // T035: 将预测引擎注入 SceneManager，使场景变更自动触发 markDirty()
     sceneManager.setPredictionEngine(predictionEngine);
 
-    // 共享相机状态（US4 CameraFollowController 接管前作为固定相机）
-    const camera: CameraState = { cx: 0, cy: 0, zoom: 1, followBallId: null };
+    // T052: 创建 CameraFollowController（US4）
+    const cameraController = new CameraFollowController();
+
+    // T060/T061: 创建 LocalSaveRepository，尝试恢复场景
+    const localSaveRepo = new LocalSaveRepository();
 
     const inputController = new InputController(mainCanvas, modeController, sceneManager);
     inputController.setAudioEngine(audioEngine);
-    inputController.setCameraStateGetter(() => camera);
+    // 使用 cameraController 的 getCameraState() 作为 getter，确保总是读到最新相机状态
+    inputController.setCameraStateGetter(() => cameraController.getCameraState());
+    inputController.setCameraController(cameraController);
     inputController.setPanelRenderer(panelRenderer);
 
     // AudioContext 再次被挂起时通过 tryResume() 重试
@@ -127,20 +139,61 @@ export class GameApp {
       inputController,
       physicsWorld,
       predictionEngine,
+      cameraController,
       audioEngine,
       audioCtx,
       canvasRenderer,
       timelineRenderer,
       panelRenderer,
       hudRenderer,
-      camera,
+      localSaveRepo,
     );
+
+    // T063: 订阅保存状态变更，实时更新 HUD 右上角
+    localSaveRepo.onStatusChange((status) => {
+      app._currentSaveStatus = status;
+      hudRenderer.update(modeController.mode, status, audioCtx.state === 'suspended');
+    });
+
+    // T061: 初始化时尝试恢复场景
+    const restoredScene = localSaveRepo.load();
+    if (restoredScene !== null) {
+      sceneManager.loadScene(restoredScene);
+    } else {
+      const loadError = localSaveRepo.getLoadError();
+      if (loadError !== null) {
+        // 存档损坏或版本过高：载入空场景 + 显示错误提示
+        sceneManager.loadScene(createEmptyScene());
+        const errorMsg = loadError === 'version-too-high'
+          ? '存档版本过高，已载入空场景'
+          : '存档损坏，已载入空场景';
+        hudRenderer.showLoadError(errorMsg);
+      }
+      // loadError === null 且 restoredScene === null：无存档，保留默认空场景
+    }
+
+    // T061/FR-032: 恢复成功后立即触发一次预测重算
+    predictionEngine.invalidate();
 
     // 初始 HUD
     hudRenderer.update('edit', undefined, audioCtx.state === 'suspended');
 
-    // 启动时触发一次预测（场景初始为空，结果为空轨迹，但使 Timeline 正确显示空谱线）
-    predictionEngine.invalidate();
+    // T064: 注册页面生命周期事件（visibilitychange + beforeunload）
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        localSaveRepo.forceSave(sceneManager.getScene());
+      }
+    });
+    window.addEventListener('beforeunload', () => {
+      localSaveRepo.forceSave(sceneManager.getScene());
+    });
+
+    // T062: 订阅 SceneManager.onChange，每次场景变更触发节流保存
+    sceneManager.onChange(() => {
+      if (modeController.mode === 'edit') {
+        localSaveRepo.save(sceneManager.getScene());
+      }
+    });
 
     // 窗口缩放时同步 canvas 像素尺寸
     window.addEventListener('resize', () => {
@@ -166,7 +219,7 @@ export class GameApp {
   // 模式切换序列（严格按 plan.md / GDD 06 顺序）
   // ──────────────────────────────────────────────────────────────
 
-  /** Edit → Play（T027 + T036 + T045） */
+  /** Edit → Play（T027 + T036 + T045 + T052） */
   private _onEnterPlay(): void {
     // 步骤 1: 锁定编辑输入
     this._inputController.lockEditing();
@@ -178,7 +231,9 @@ export class GameApp {
     this._canvasRenderer.disablePredictionLayer();
     // 步骤 5: 停止预测计算（T036）
     this._predictionEngine.pause();
-    // 步骤 6: CameraFollowController.resolveCameraTarget() — Phase 6 (T052) stub
+    // 步骤 6: C5 门禁 — 判定跟随目标（T052）
+    // 仅此时读取 selectedBallId，播放中不重判
+    this._cameraController.resolveCameraTarget(this._sceneManager.getSelectedId());
 
     // 步骤 7: 快照当前场景（退出播放时恢复实体位置），加载到物理引擎并启动
     this._playSnapshot = JSON.parse(JSON.stringify(this._sceneManager.getScene())) as Scene;
@@ -191,7 +246,7 @@ export class GameApp {
     this._hudRenderer.update('play', undefined, this._audioCtx.state === 'suspended');
   }
 
-  /** Play → Edit（T027 + T036 + T045） */
+  /** Play → Edit（T027 + T036 + T045 + T052） */
   private _onEnterEdit(): void {
     // 步骤 1: 停止物理步进
     this._physicsWorld.stop();
@@ -207,7 +262,11 @@ export class GameApp {
     this._timelineRenderer.show();
     // 步骤 7: 强制触发一次预测重算（T036），跳过去抖
     this._predictionEngine.invalidate();
-    // 步骤 8: LocalSaveRepository.forceSave() — Phase 7 stub
+    // 步骤 8: T062 强制保存（不受节流延迟约束，FR-030）
+    this._localSaveRepo.forceSave(this._sceneManager.getScene());
+
+    // T052: 停止相机跟随
+    this._cameraController.stopFollow();
 
     // 恢复实体位置到播放前快照
     if (this._playSnapshot) {
@@ -260,12 +319,14 @@ export class GameApp {
       this._audioEngine.processCollisions(events);
     }
 
-    // 帧序步骤 6: CameraFollowController.update() — Phase 6 (T052) stub
+    // 帧序步骤 6: CameraFollowController.update()（T052）
+    // 编辑态 followBallId 为 null，安全跳过；播放态使用物理引擎最新位置
+    this._cameraController.update(this._physicsWorld.getBallPositions());
 
     // 帧序步骤 7: CanvasRenderer.render()（T037: 传入 predictionResult）
     this._canvasRenderer.render(
       this._sceneManager.getScene(),
-      this._camera,
+      this._cameraController.getCameraState(),
       this._predictionEngine.getLatestResult(),
     );
 
@@ -282,10 +343,12 @@ export class GameApp {
     // HUD 每帧更新（audio state 可能变化）
     this._hudRenderer.update(mode, undefined, this._audioCtx.state === 'suspended');
 
-    // 帧序步骤 10: LocalSaveRepository.tick() — Phase 7 (T062) stub
+    // 帧序步骤 10: LocalSaveRepository.tick()（T062）
+    this._localSaveRepo.tick();
 
     // ── E2E 专用调试状态（window.__debugState，每帧写入）──────────
     const scene = this._sceneManager.getScene();
+    const cam = this._cameraController.getCameraState();
     window.__debugState = {
       mode,
       audioEngine: {
@@ -298,8 +361,15 @@ export class GameApp {
         kind: e.kind,
         x: e.x,
         y: e.y,
+        ...(e.kind === 'music-block' ? { noteName: e.noteName, volume: e.volume } : {}),
       })),
       physicsRunning: mode === 'play',
+      camera: {
+        cx: cam.cx,
+        cy: cam.cy,
+        zoom: cam.zoom,
+        followBallId: cam.followBallId,
+      },
       prediction: predResult
         ? {
             noteCount: predResult.predictedNotes.length,
@@ -314,6 +384,10 @@ export class GameApp {
             })),
           }
         : null,
+      persistence: {
+        saveStatus: this._currentSaveStatus,
+        loadError: this._localSaveRepo.getLoadError(),
+      },
     };
 
     this._rafId = requestAnimationFrame(this._loop.bind(this));

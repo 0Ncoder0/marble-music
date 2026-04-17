@@ -10,7 +10,14 @@ declare global {
         totalCollisionEventsReceived: number;
       };
       entityCount: number;
-      entities: Array<{ id: string; kind: string; x: number; y: number }>;
+      entities: Array<{
+        id: string;
+        kind: string;
+        x: number;
+        y: number;
+        noteName?: string;
+        volume?: number;
+      }>;
       physicsRunning: boolean;
       /** 预测系统状态（Phase 4 新增） */
       prediction: {
@@ -26,6 +33,18 @@ declare global {
           musicBlockId: string;
         }>;
       } | null;
+      /** 相机状态（US4 新增，供 E2E-17~E2E-19 断言） */
+      camera: {
+        cx: number;
+        cy: number;
+        zoom: number;
+        followBallId: string | null;
+      };
+      /** 持久化状态（US5 新增，供 E2E-20~E2E-23 断言） */
+      persistence: {
+        saveStatus: string;
+        loadError: string | null;
+      };
     };
   }
 }

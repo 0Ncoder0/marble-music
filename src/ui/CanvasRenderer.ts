@@ -91,21 +91,35 @@ export class CanvasRenderer {
       }
     }
 
-    // L3: 小球（蓝色圆形）——播放态使用 physicsPositions，编辑态使用 entity 坐标
+    // L3: 小球（多球使用颜色池区分）
+    let ballIndex = 0;
     for (const entity of scene.entities) {
       if (entity.kind === 'ball') {
         const pos = physicsPositions?.get(entity.id);
         const bx = pos?.x ?? entity.x;
         const by = pos?.y ?? entity.y;
+        const ballColor = TRAJECTORY_COLORS[ballIndex % TRAJECTORY_COLORS.length];
+        const isSelected = entity.id === scene.selectedBallId;
         ctx.save();
         ctx.beginPath();
         ctx.arc(bx, by, entity.radius, 0, Math.PI * 2);
-        ctx.fillStyle = BALL_COLOR;
+        ctx.fillStyle = ballColor;
         ctx.fill();
-        ctx.strokeStyle = '#2a60a9';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = isSelected ? SELECTED_COLOR : '#2a60a9';
+        ctx.lineWidth = isSelected ? 2 : 1.5;
         ctx.stroke();
+
+        // 多球时在球旁显示编号标识（与 TimelineStaffRenderer 谱线颜色一致）
+        if (scene.entities.filter((e) => e.kind === 'ball').length > 1) {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${Math.max(9, entity.radius * 0.7)}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(ballIndex + 1), bx, by);
+        }
+
         ctx.restore();
+        ballIndex++;
       }
     }
 
