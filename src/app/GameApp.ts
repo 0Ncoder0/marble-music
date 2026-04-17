@@ -15,6 +15,9 @@ import { createEmptyScene } from '../persistence/SceneSerializer.js';
 import { PHYSICS_CONFIG } from '../constants.js';
 import type { Scene, SaveStatus } from '../scene/types.js';
 
+/** FPS 滑动窗口大小（帧数） */
+const FPS_WINDOW = 60;
+
 export class GameApp {
   private readonly _modeController: ModeController;
   private readonly _sceneManager: SceneManager;
@@ -35,6 +38,19 @@ export class GameApp {
   private _currentSaveStatus: SaveStatus = 'idle';
   /** 进入播放态前的场景深拷贝快照，退出时用于恢复实体初始位置 */
   private _playSnapshot: Scene | null = null;
+
+  /** 调试模式（?debug=1） */
+  private _debugMode = false;
+
+  /** FPS 滑动窗口帧时间戳（ms），最多保留 FPS_WINDOW 帧 */
+  private readonly _fpsTimestamps: number[] = [];
+  /** 当前滑动平均 FPS */
+  private _fps = 60;
+
+  /** 最近 1 秒碰撞计数（用于 collisionsPerSec） */
+  private _collisionCountBucket = 0;
+  private _collisionsPerSec = 0;
+  private _lastCollisionSecTimestamp = 0;
 
   private constructor(
     modeController: ModeController,
@@ -175,6 +191,13 @@ export class GameApp {
     // T061/FR-032: 恢复成功后立即触发一次预测重算
     predictionEngine.invalidate();
 
+    // T069: 检测 ?debug=1 并启用调试面板
+    const debugMode = new URLSearchParams(location.search).has('debug');
+    if (debugMode) {
+      hudRenderer.enableDebugPanel(hudContainer);
+    }
+    app._debugMode = debugMode;
+
     // 初始 HUD
     hudRenderer.update('edit', undefined, audioCtx.state === 'suspended');
 
@@ -283,6 +306,26 @@ export class GameApp {
   // ──────────────────────────────────────────────────────────────
 
   private _loop(timestamp: number): void {
+    // T069: FPS 滑动窗口计算
+    this._fpsTimestamps.push(timestamp);
+    if (this._fpsTimestamps.length > FPS_WINDOW) {
+      this._fpsTimestamps.shift();
+    }
+    if (this._fpsTimestamps.length >= 2) {
+      const elapsed = this._fpsTimestamps[this._fpsTimestamps.length - 1] - this._fpsTimestamps[0];
+      this._fps = ((this._fpsTimestamps.length - 1) / elapsed) * 1000;
+    }
+
+    // T069: 碰撞率（每秒刷新一次）
+    if (this._lastCollisionSecTimestamp === 0) {
+      this._lastCollisionSecTimestamp = timestamp;
+    }
+    if (timestamp - this._lastCollisionSecTimestamp >= 1000) {
+      this._collisionsPerSec = this._collisionCountBucket;
+      this._collisionCountBucket = 0;
+      this._lastCollisionSecTimestamp = timestamp;
+    }
+
     this._lastTimestamp = timestamp;
 
     // 帧序步骤 1: 输入处理（事件驱动）
@@ -313,10 +356,16 @@ export class GameApp {
       }
     }
 
-    // 帧序步骤 5: [仅 play] AudioEngine.processCollisions()
+    // 帧序步骤 5: [仅 play] AudioEngine.processCollisions() + L6 脉冲特效（T068）
     if (mode === 'play') {
       const events = this._physicsWorld.getCollisionEvents();
       this._audioEngine.processCollisions(events);
+      // T068: 将碰撞事件传给 CanvasRenderer 创建脉冲环动画
+      if (events.length > 0) {
+        this._canvasRenderer.processCollisionEffects(events);
+        // T069: 累计碰撞计数（每秒刷新）
+        this._collisionCountBucket += events.length;
+      }
     }
 
     // 帧序步骤 6: CameraFollowController.update()（T052）
@@ -349,6 +398,9 @@ export class GameApp {
     // ── E2E 专用调试状态（window.__debugState，每帧写入）──────────
     const scene = this._sceneManager.getScene();
     const cam = this._cameraController.getCameraState();
+    const predComputeMs = this._predictionEngine.lastComputeMs;
+    const timelineTrackCount = predResult ? predResult.trajectories.size : 0;
+
     window.__debugState = {
       mode,
       audioEngine: {
@@ -375,7 +427,7 @@ export class GameApp {
             noteCount: predResult.predictedNotes.length,
             trajBallCount: predResult.trajectories.size,
             computedAt: predResult.computedAt,
-            lastComputeMs: this._predictionEngine.lastComputeMs,
+            lastComputeMs: predComputeMs,
             notes: predResult.predictedNotes.map((n) => ({
               timeMs: n.timeMs,
               noteName: n.noteName,
@@ -388,7 +440,22 @@ export class GameApp {
         saveStatus: this._currentSaveStatus,
         loadError: this._localSaveRepo.getLoadError(),
       },
+      // T069: 性能指标（始终写入，供 E2E T076 断言）
+      fps: this._fps,
+      predictionMs: predComputeMs,
+      timelineTrackCount,
+      collisionsPerSec: this._collisionsPerSec,
     };
+
+    // T069: 调试模式下刷新可见 HUD 面板
+    if (this._debugMode) {
+      this._hudRenderer.updateDebugPanel({
+        fps: this._fps,
+        activeVoiceCount: this._audioEngine.activeVoiceCount,
+        collisionsPerSec: this._collisionsPerSec,
+        predictionMs: predComputeMs,
+      });
+    }
 
     this._rafId = requestAnimationFrame(this._loop.bind(this));
   }

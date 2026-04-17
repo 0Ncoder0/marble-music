@@ -1,10 +1,21 @@
-import type { Scene, CameraState, PredictionResult, Vec2 } from '../scene/types.js';
+import { BASE_DECAY_S, VOLUME_DECAY_SCALE_S } from '../constants.js';
+import type { Scene, CameraState, PredictionResult, Vec2, CollisionEvent } from '../scene/types.js';
 
 const GRID_SIZE = 40;
 const BALL_COLOR = '#4a90d9';
 const BLOCK_COLOR = '#888888';
 const MUSIC_BLOCK_COLOR = '#7b5ea7';
 const SELECTED_COLOR = '#f5c518';
+const RIPPLE_COLOR_RGB = '247, 185, 24'; // 金黄色，与选中高亮呼应
+
+interface Ripple {
+  x: number;
+  y: number;
+  volume: number;
+  baseRadius: number;
+  createdAt: number;
+  duration: number; // ms
+}
 
 /** 预测轨迹颜色池（与 TimelineStaffRenderer 颜色保持一致） */
 export const TRAJECTORY_COLORS = [
@@ -20,11 +31,39 @@ export class CanvasRenderer {
   private readonly _ctx: CanvasRenderingContext2D;
   private _predictionEnabled = true;
 
+  /** L6: 活跃的脉冲环列表 */
+  private readonly _activeRipples: Ripple[] = [];
+  /** L6: 音乐方块位置缓存（上一帧渲染时更新），供 processCollisionEffects 查找 */
+  private readonly _musicBlockPositions = new Map<string, { x: number; y: number }>();
+
   constructor(canvas: HTMLCanvasElement) {
     this._canvas = canvas;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Unable to get 2D context from canvas');
     this._ctx = ctx;
+  }
+
+  /**
+   * L6: 处理碰撞事件，创建脉冲环动画实例。
+   * 由 GameApp 在 AudioEngine.processCollisions 之后（仅 play 态）调用。
+   * 衰减时长与 PianoSynth voice 衰减公式同源。
+   */
+  processCollisionEffects(events: CollisionEvent[]): void {
+    if (events.length === 0) return;
+    const now = performance.now();
+    for (const event of events) {
+      const pos = this._musicBlockPositions.get(event.musicBlockId);
+      if (!pos) continue;
+      const duration = (BASE_DECAY_S + event.volume * VOLUME_DECAY_SCALE_S) * 1000;
+      this._activeRipples.push({
+        x: pos.x,
+        y: pos.y,
+        volume: event.volume,
+        baseRadius: 20 + event.volume * 20,
+        createdAt: now,
+        duration,
+      });
+    }
   }
 
   disablePredictionLayer(): void {
@@ -71,9 +110,11 @@ export class CanvasRenderer {
       }
     }
 
-    // L2: 音乐方块（紫色 + 中心白色音名文字）
+    // L2: 音乐方块（紫色 + 中心白色音名文字），同时更新位置缓存供 L6 使用
+    this._musicBlockPositions.clear();
     for (const entity of scene.entities) {
       if (entity.kind === 'music-block') {
+        this._musicBlockPositions.set(entity.id, { x: entity.x, y: entity.y });
         ctx.save();
         ctx.translate(entity.x, entity.y);
         ctx.fillStyle = MUSIC_BLOCK_COLOR;
@@ -176,7 +217,44 @@ export class CanvasRenderer {
       this._drawPredictionTrajectories(ctx, predictionResult.trajectories);
     }
 
-    // L6: 音乐活动脉冲特效（stub — Phase 8 T068 填充）
+    // L6: 音乐活动脉冲环特效（T068）
+    this._drawRipples(ctx);
+
+    ctx.restore();
+  }
+
+  /** L6: 绘制并更新活跃脉冲环，完成的环从数组移除 */
+  private _drawRipples(ctx: CanvasRenderingContext2D): void {
+    if (this._activeRipples.length === 0) return;
+    const now = performance.now();
+
+    ctx.save();
+    ctx.setLineDash([]);
+
+    let i = this._activeRipples.length - 1;
+    while (i >= 0) {
+      const ripple = this._activeRipples[i];
+      const elapsed = now - ripple.createdAt;
+      if (elapsed >= ripple.duration) {
+        this._activeRipples.splice(i, 1);
+        i--;
+        continue;
+      }
+
+      const progress = elapsed / ripple.duration;
+      // 透明度：从 volume 线性衰减到 0
+      const alpha = (1 - progress) * Math.min(1, ripple.volume + 0.3);
+      // 半径：从 baseRadius 扩散到 baseRadius * 3
+      const radius = ripple.baseRadius * (1 + progress * 2);
+
+      ctx.beginPath();
+      ctx.arc(ripple.x, ripple.y, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${RIPPLE_COLOR_RGB}, ${alpha.toFixed(3)})`;
+      ctx.lineWidth = 2 * (1 - progress * 0.5);
+      ctx.stroke();
+
+      i--;
+    }
 
     ctx.restore();
   }

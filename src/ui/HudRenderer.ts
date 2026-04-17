@@ -1,9 +1,17 @@
 import type { AppMode, SaveStatus } from '../scene/types.js';
 
+export interface DebugInfo {
+  fps: number;
+  activeVoiceCount: number;
+  collisionsPerSec: number;
+  predictionMs: number;
+}
+
 export class HudRenderer {
   private readonly _modeEl: HTMLDivElement;
   private readonly _saveEl: HTMLDivElement;
   private readonly _audioBannerEl: HTMLDivElement;
+  private _debugPanelEl: HTMLDivElement | null = null;
 
   private _saveHideTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -62,6 +70,42 @@ export class HudRenderer {
     container.appendChild(this._modeEl);
     container.appendChild(this._saveEl);
     container.appendChild(this._audioBannerEl);
+  }
+
+  /**
+   * 启用调试面板（?debug=1 时由 GameApp 调用）。
+   * 面板位于右侧，半透明黑色背景，展示 FPS/Voice/碰撞率/预测耗时。
+   */
+  enableDebugPanel(container: HTMLElement): void {
+    if (this._debugPanelEl) return;
+    this._debugPanelEl = this._createElement({
+      position: 'absolute',
+      top: '48px',
+      right: '12px',
+      padding: '8px 14px',
+      background: 'rgba(0,0,0,0.72)',
+      color: '#c8e6c9',
+      borderRadius: '6px',
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      lineHeight: '1.6',
+      pointerEvents: 'none',
+      userSelect: 'none',
+      zIndex: '10',
+      whiteSpace: 'pre',
+    });
+    this._debugPanelEl.setAttribute('id', 'debug-panel');
+    container.appendChild(this._debugPanelEl);
+  }
+
+  /** 更新调试面板内容（每帧调用，仅 debug 模式下有效） */
+  updateDebugPanel(info: DebugInfo): void {
+    if (!this._debugPanelEl) return;
+    this._debugPanelEl.textContent =
+      `FPS:         ${info.fps.toFixed(1)}\n` +
+      `Voices:      ${info.activeVoiceCount}\n` +
+      `Collisions/s:${info.collisionsPerSec}\n` +
+      `Predict ms:  ${info.predictionMs.toFixed(1)}`;
   }
 
   update(mode: AppMode, saveStatus?: SaveStatus, audioBlocked?: boolean): void {

@@ -45,6 +45,17 @@ declare global {
         saveStatus: string;
         loadError: string | null;
       };
+      /**
+       * 性能指标（T069/T076 新增）。
+       * 始终写入（E2E 需要），可见调试面板仅在 ?debug=1 时显示。
+       */
+      fps: number;
+      /** 上次预测计算耗时（ms），与 prediction.lastComputeMs 同源 */
+      predictionMs: number;
+      /** 当前预测结果中的轨迹球数（与 prediction.trajBallCount 同源） */
+      timelineTrackCount: number;
+      /** 最近 1 秒内碰撞触发次数（调试用） */
+      collisionsPerSec: number;
     };
   }
 }
