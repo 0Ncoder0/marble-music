@@ -2,7 +2,11 @@ import { EntityFactory } from '../scene/EntityFactory.js';
 import type { SceneManager } from '../scene/SceneManager.js';
 import type { ModeController } from './ModeController.js';
 import type { AudioEngine } from '../audio/AudioEngine.js';
-import type { CameraState, Entity } from '../scene/types.js';
+import type { PanelRenderer } from '../ui/PanelRenderer.js';
+import type { CameraState, Entity, MusicBlock } from '../scene/types.js';
+
+/** 音名合法格式：A-G + 可选升降号(#/b) + 八度数字 0-9 */
+const NOTE_NAME_REGEX = /^[A-G][#b]?[0-9]$/;
 
 export type ActiveTool = 'ball' | 'block' | 'music-block' | 'select';
 
@@ -21,6 +25,7 @@ export class InputController {
   private readonly _sceneManager: SceneManager;
   private _audioEngine: AudioEngine | null = null;
   private _getCameraState: (() => CameraState) | null = null;
+  private _panelRenderer: PanelRenderer | null = null;
 
   private _isDragging = false;
   private _dragEntityId: string | null = null;
@@ -48,6 +53,48 @@ export class InputController {
   /** 注入相机状态 getter，用于屏幕坐标→世界坐标转换 */
   setCameraStateGetter(getter: () => CameraState): void {
     this._getCameraState = getter;
+  }
+
+  /**
+   * 注入 PanelRenderer 并注册参数面板回调（T044）。
+   * 必须在 GameApp.create() 中调用，确保面板操作能路由到 SceneManager。
+   */
+  setPanelRenderer(panelRenderer: PanelRenderer): void {
+    this._panelRenderer = panelRenderer;
+
+    // 工具切换回调
+    panelRenderer.setOnToolChange((tool) => {
+      this._activeTool = tool;
+    });
+
+    // 音名变更回调：校验 → 合法时写入实体，非法时显示错误并保留旧值（FR-018）
+    panelRenderer.setOnNoteNameChange((value) => {
+      const selectedId = this._sceneManager.getSelectedId();
+      if (!selectedId) return;
+      const entities = this._sceneManager.getScene().entities;
+      const entity = entities.find((e) => e.id === selectedId);
+      if (!entity || entity.kind !== 'music-block') return;
+
+      if (!NOTE_NAME_REGEX.test(value)) {
+        panelRenderer.showNoteNameError('格式错误（如 C4、G#3）');
+        return; // 不写入，保留旧值
+      }
+      panelRenderer.clearNoteNameError();
+      // 写入 noteName → 触发 SceneManager.onChange → PredictionEngine.markDirty()
+      this._sceneManager.updateEntity(selectedId, { noteName: value } as Partial<MusicBlock>);
+    });
+
+    // 音量变更回调：夹紧到 [0, 1] 后写入
+    panelRenderer.setOnVolumeChange((value) => {
+      const selectedId = this._sceneManager.getSelectedId();
+      if (!selectedId) return;
+      const entities = this._sceneManager.getScene().entities;
+      const entity = entities.find((e) => e.id === selectedId);
+      if (!entity || entity.kind !== 'music-block') return;
+
+      const clamped = Math.max(0, Math.min(1, value));
+      this._sceneManager.updateEntity(selectedId, { volume: clamped } as Partial<MusicBlock>);
+    });
   }
 
   get activeTool(): ActiveTool {

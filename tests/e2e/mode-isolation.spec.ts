@@ -198,6 +198,54 @@ test('E2E-12: panel-container and timeline-canvas are hidden in play mode', asyn
 });
 
 // ─────────────────────────────────────────────
+// E2E-12 参数面板部分：选中音乐方块后面板可见，播放态自动隐藏
+// ─────────────────────────────────────────────
+
+test('E2E-12-panel: music block param panel visible in edit, hidden in play mode', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await waitForApp(page);
+
+  const canvas = page.locator('#main-canvas');
+
+  // 编辑态放置音乐方块并选中
+  await page.keyboard.press('3');
+  await canvas.click({ position: { x: 640, y: 380 } });
+
+  // 等待 1 个实体进入场景
+  await page.waitForFunction(
+    () => window.__debugState?.entities.some((e) => e.kind === 'music-block'),
+    { timeout: 3_000 },
+  );
+
+  // 此时已选中（放置即选中），等待参数面板出现
+  const noteInput = page.locator('#note-name-input');
+  await noteInput.waitFor({ state: 'visible', timeout: 3_000 });
+
+  // 音名输入框和音量滑块均应可见
+  const volSlider = page.locator('#volume-slider');
+  await volSlider.waitFor({ state: 'visible', timeout: 1_000 });
+
+  // 进入播放态
+  await enterPlayMode(page);
+
+  // 播放态：panel-container 隐藏（参数面板随之不可见）
+  const panelContainerDisplay = await page
+    .locator('#panel-container')
+    .evaluate((el) => window.getComputedStyle(el).display);
+  expect(panelContainerDisplay).toBe('none');
+
+  // 返回编辑态：panel-container 重新可见
+  await exitPlayMode(page);
+
+  const panelContainerBack = await page
+    .locator('#panel-container')
+    .evaluate((el) => window.getComputedStyle(el).display);
+  expect(panelContainerBack).not.toBe('none');
+});
+
+// ─────────────────────────────────────────────
 // E2E-16：UI 中无"暂停"字样（C1 门禁：无第三态）
 // ─────────────────────────────────────────────
 

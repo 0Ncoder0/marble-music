@@ -7,6 +7,7 @@ import { AudioEngine } from '../audio/AudioEngine.js';
 import { PianoSynth } from '../audio/PianoSynth.js';
 import { CanvasRenderer } from '../ui/CanvasRenderer.js';
 import { TimelineStaffRenderer } from '../ui/TimelineStaffRenderer.js';
+import { PanelRenderer } from '../ui/PanelRenderer.js';
 import { HudRenderer } from '../ui/HudRenderer.js';
 import { PHYSICS_CONFIG } from '../constants.js';
 import type { CameraState, Scene } from '../scene/types.js';
@@ -21,8 +22,8 @@ export class GameApp {
   private readonly _audioCtx: AudioContext;
   private readonly _canvasRenderer: CanvasRenderer;
   private readonly _timelineRenderer: TimelineStaffRenderer;
+  private readonly _panelRenderer: PanelRenderer;
   private readonly _hudRenderer: HudRenderer;
-  private readonly _panelContainer: HTMLElement;
   private readonly _camera: CameraState;
 
   private _rafId = 0;
@@ -40,8 +41,8 @@ export class GameApp {
     audioCtx: AudioContext,
     canvasRenderer: CanvasRenderer,
     timelineRenderer: TimelineStaffRenderer,
+    panelRenderer: PanelRenderer,
     hudRenderer: HudRenderer,
-    panelContainer: HTMLElement,
     camera: CameraState,
   ) {
     this._modeController = modeController;
@@ -53,8 +54,8 @@ export class GameApp {
     this._audioCtx = audioCtx;
     this._canvasRenderer = canvasRenderer;
     this._timelineRenderer = timelineRenderer;
+    this._panelRenderer = panelRenderer;
     this._hudRenderer = hudRenderer;
-    this._panelContainer = panelContainer;
     this._camera = camera;
 
     // 订阅模式变更（同步触发）
@@ -95,6 +96,7 @@ export class GameApp {
 
     const canvasRenderer = new CanvasRenderer(mainCanvas);
     const timelineRenderer = new TimelineStaffRenderer(timelineCanvasEl);
+    const panelRenderer = new PanelRenderer(panelContainer);
     const hudRenderer = new HudRenderer(hudContainer);
 
     // 创建 PredictionEngine（T034）
@@ -109,6 +111,7 @@ export class GameApp {
     const inputController = new InputController(mainCanvas, modeController, sceneManager);
     inputController.setAudioEngine(audioEngine);
     inputController.setCameraStateGetter(() => camera);
+    inputController.setPanelRenderer(panelRenderer);
 
     // AudioContext 再次被挂起时通过 tryResume() 重试
     audioCtx.addEventListener('statechange', () => {
@@ -128,8 +131,8 @@ export class GameApp {
       audioCtx,
       canvasRenderer,
       timelineRenderer,
+      panelRenderer,
       hudRenderer,
-      panelContainer,
       camera,
     );
 
@@ -163,12 +166,12 @@ export class GameApp {
   // 模式切换序列（严格按 plan.md / GDD 06 顺序）
   // ──────────────────────────────────────────────────────────────
 
-  /** Edit → Play（T027 + T036） */
+  /** Edit → Play（T027 + T036 + T045） */
   private _onEnterPlay(): void {
     // 步骤 1: 锁定编辑输入
     this._inputController.lockEditing();
-    // 步骤 2: 隐藏右侧面板（US3 T045 替换为 PanelRenderer.hide()）
-    this._panelContainer.style.display = 'none';
+    // 步骤 2: 隐藏右侧面板（T045）
+    this._panelRenderer.hide();
     // 步骤 3: 隐藏底部 Timeline（T039）
     this._timelineRenderer.hide();
     // 步骤 4: 停止预测线渲染（T036）
@@ -188,7 +191,7 @@ export class GameApp {
     this._hudRenderer.update('play', undefined, this._audioCtx.state === 'suspended');
   }
 
-  /** Play → Edit（T027 + T036） */
+  /** Play → Edit（T027 + T036 + T045） */
   private _onEnterEdit(): void {
     // 步骤 1: 停止物理步进
     this._physicsWorld.stop();
@@ -196,8 +199,8 @@ export class GameApp {
     this._audioEngine.stopListening();
     // 步骤 3: 解锁编辑输入
     this._inputController.unlockEditing();
-    // 步骤 4: 显示右侧面板
-    this._panelContainer.style.display = '';
+    // 步骤 4: 显示右侧面板（T045）
+    this._panelRenderer.show();
     // 步骤 5: 恢复预测计算（T036）
     this._predictionEngine.resume();
     // 步骤 6: 显示底部 Timeline（T039）
@@ -270,7 +273,12 @@ export class GameApp {
     const predResult = this._predictionEngine.getLatestResult();
     this._timelineRenderer.render(predResult?.predictedNotes ?? [], mode);
 
-    // 帧序步骤 9: PanelRenderer.render() — Phase 5 (T045) stub
+    // 帧序步骤 9: PanelRenderer.update() + HudRenderer.update()（T045）
+    const selectedId = this._sceneManager.getSelectedId();
+    const selectedEntity = selectedId
+      ? (this._sceneManager.getScene().entities.find((e) => e.id === selectedId) ?? null)
+      : null;
+    this._panelRenderer.update(selectedEntity, this._inputController.activeTool);
     // HUD 每帧更新（audio state 可能变化）
     this._hudRenderer.update(mode, undefined, this._audioCtx.state === 'suspended');
 

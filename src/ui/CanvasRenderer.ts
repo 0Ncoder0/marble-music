@@ -122,14 +122,35 @@ export class CanvasRenderer {
           ctx.beginPath();
           ctx.arc(selected.x, selected.y, selected.radius + 4, 0, Math.PI * 2);
           ctx.stroke();
-        } else if (selected.kind === 'block' || selected.kind === 'music-block') {
+        } else if (selected.kind === 'block') {
           ctx.translate(selected.x, selected.y);
-          if (selected.kind === 'block') ctx.rotate(selected.rotation);
+          ctx.rotate(selected.rotation);
           ctx.strokeRect(
             -selected.width / 2 - 4,
             -selected.height / 2 - 4,
             selected.width + 8,
             selected.height + 8,
+          );
+        } else if (selected.kind === 'music-block') {
+          // MusicBlock 选中高亮：虚线矩形轮廓
+          ctx.translate(selected.x, selected.y);
+          ctx.strokeRect(
+            -selected.width / 2 - 4,
+            -selected.height / 2 - 4,
+            selected.width + 8,
+            selected.height + 8,
+          );
+
+          // 在实体左上角额外标注当前音名（防遮挡中心文字）
+          ctx.setLineDash([]);
+          ctx.fillStyle = SELECTED_COLOR;
+          ctx.font = '11px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(
+            selected.noteName,
+            -selected.width / 2 - 4,
+            -selected.height / 2 - 6,
           );
         }
         ctx.restore();
