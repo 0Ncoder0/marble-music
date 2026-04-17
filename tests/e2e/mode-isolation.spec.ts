@@ -246,18 +246,27 @@ test('E2E-12-panel: music block param panel visible in edit, hidden in play mode
 });
 
 // ─────────────────────────────────────────────
-// E2E-16：UI 中无"暂停"字样（C1 门禁：无第三态）
+// E2E-16：UI 中无"暂停"字样（C1 门禁：无第三态）最终完整断言
 // ─────────────────────────────────────────────
 
 test('E2E-16: no pause button or pause text exists in UI', async ({ page }) => {
   await page.goto('/');
   await waitForApp(page);
 
-  // 编辑态：无暂停相关文字
+  // ── 编辑态断言 ──────────────────────────────
+  // 无暂停相关中文文字
   const pauseInEdit = await page.locator('text=暂停').count();
   expect(pauseInEdit).toBe(0);
 
-  // 进入播放态
+  // 无任何暂停语义的按钮（aria-label 或 title 含 pause）
+  const pauseBtnEdit = await page.locator('button[aria-label*="暂停"], button[title*="暂停"]').count();
+  expect(pauseBtnEdit).toBe(0);
+
+  // __debugState.mode 只能是 "edit" 或 "play"，没有第三态
+  const modeInEdit = await page.evaluate(() => window.__debugState?.mode);
+  expect(modeInEdit).toBe('edit');
+
+  // ── 播放态断言 ──────────────────────────────
   await enterPlayMode(page);
 
   // 播放态：仍无暂停文字
@@ -270,5 +279,22 @@ test('E2E-16: no pause button or pause text exists in UI', async ({ page }) => {
   );
   expect(pauseEnCount).toBe(false);
 
+  // 播放态 mode 为 "play"（不是第三态）
+  const modeInPlay = await page.evaluate(() => window.__debugState?.mode);
+  expect(modeInPlay).toBe('play');
+
+  // HUD 显示"播放中"而非任何暂停相关文案
+  await expect(page.locator('text=播放中')).toBeVisible();
+  const pauseHudCount = await page.locator('text=暂停').count();
+  expect(pauseHudCount).toBe(0);
+
+  // ── 返回编辑态，确认无第三态残留 ──────────────
   await exitPlayMode(page);
+
+  const modeAfterExit = await page.evaluate(() => window.__debugState?.mode);
+  expect(modeAfterExit).toBe('edit');
+
+  // 确认无暂停元素出现（完整流程后仍无第三态 UI）
+  const pauseAfterExit = await page.locator('text=暂停').count();
+  expect(pauseAfterExit).toBe(0);
 });

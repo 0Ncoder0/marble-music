@@ -74,6 +74,11 @@ export class CanvasRenderer {
     this._predictionEnabled = true;
   }
 
+  /** T070: 退出播放态时清除所有残留脉冲环，防止编辑态仍显示播放特效 */
+  clearRipples(): void {
+    this._activeRipples.length = 0;
+  }
+
   render(
     scene: Scene,
     cameraState: CameraState,

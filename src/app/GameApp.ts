@@ -38,6 +38,8 @@ export class GameApp {
   private _currentSaveStatus: SaveStatus = 'idle';
   /** 进入播放态前的场景深拷贝快照，退出时用于恢复实体初始位置 */
   private _playSnapshot: Scene | null = null;
+  /** T070: 防重入守卫，防止 ModeController 回调触发递归切换 */
+  private _modeSwitching = false;
 
   /** 调试模式（?debug=1） */
   private _debugMode = false;
@@ -244,6 +246,16 @@ export class GameApp {
 
   /** Edit → Play（T027 + T036 + T045 + T052） */
   private _onEnterPlay(): void {
+    if (this._modeSwitching) return; // T070: 防重入
+    this._modeSwitching = true;
+    try {
+      this._onEnterPlayImpl();
+    } finally {
+      this._modeSwitching = false;
+    }
+  }
+
+  private _onEnterPlayImpl(): void {
     // 步骤 1: 锁定编辑输入
     this._inputController.lockEditing();
     // 步骤 2: 隐藏右侧面板（T045）
@@ -271,6 +283,16 @@ export class GameApp {
 
   /** Play → Edit（T027 + T036 + T045 + T052） */
   private _onEnterEdit(): void {
+    if (this._modeSwitching) return; // T070: 防重入
+    this._modeSwitching = true;
+    try {
+      this._onEnterEditImpl();
+    } finally {
+      this._modeSwitching = false;
+    }
+  }
+
+  private _onEnterEditImpl(): void {
     // 步骤 1: 停止物理步进
     this._physicsWorld.stop();
     // 步骤 2: 停止新触发（已发声 voice 自然衰减）
@@ -290,6 +312,9 @@ export class GameApp {
 
     // T052: 停止相机跟随
     this._cameraController.stopFollow();
+
+    // T070: 清除播放中累积的脉冲环动画
+    this._canvasRenderer.clearRipples();
 
     // 恢复实体位置到播放前快照
     if (this._playSnapshot) {

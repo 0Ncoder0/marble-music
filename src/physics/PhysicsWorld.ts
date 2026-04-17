@@ -131,6 +131,11 @@ export class PhysicsWorld {
     this._running = false;
   }
 
+  /** 是否正在运行（供外部防守用） */
+  isRunning(): boolean {
+    return this._running;
+  }
+
   step(dt: number): void {
     Matter.Engine.update(this._engine, dt);
   }
