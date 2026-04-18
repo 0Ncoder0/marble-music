@@ -1,0 +1,212 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "marble-music/sandbox-state",
+  "title": "SaveData",
+  "description": "Marble Music 存档顶层格式，对应 localStorage['marble-music-save'] 的完整 JSON 结构。契约来源：GDD 07 数据模型与存档契约。",
+  "type": "object",
+  "required": ["version", "savedAt", "scene"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "存档版本号，当前固定为 1。大于已知版本时拒绝加载。"
+    },
+    "savedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "存档时间戳，ISO 8601 格式。"
+    },
+    "scene": {
+      "$ref": "#/definitions/Scene"
+    }
+  },
+  "definitions": {
+    "Scene": {
+      "type": "object",
+      "title": "Scene",
+      "description": "场景顶层容器，持有所有实体和场景级状态。",
+      "required": ["id", "mode", "gravity", "selectedBallId", "entities"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "场景唯一标识（UUID）。"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["edit", "play"],
+          "description": "当前模式。存档写入时始终为 'edit'；不存在暂停状态。"
+        },
+        "gravity": {
+          "type": "object",
+          "required": ["x", "y"],
+          "additionalProperties": false,
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" }
+          },
+          "description": "重力向量，默认 { x: 0, y: 9.8 }。v1 不提供面向玩家的 UI 调整。"
+        },
+        "selectedBallId": {
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ],
+          "description": "当前选中球的实体 ID，null 表示无选中。若非 null，必须对应 entities 中存在的 Ball。"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Entity"
+          },
+          "description": "场景中所有实体，每个实体的 id 在场景内唯一。"
+        }
+      }
+    },
+    "Entity": {
+      "oneOf": [
+        { "$ref": "#/definitions/Ball" },
+        { "$ref": "#/definitions/Block" },
+        { "$ref": "#/definitions/MusicBlock" }
+      ],
+      "description": "实体联合类型，通过 kind 字段区分（discriminated union）。"
+    },
+    "Ball": {
+      "type": "object",
+      "title": "Ball",
+      "description": "小球：动态物理实体，播放态受重力驱动，编辑态速度为零。",
+      "required": ["id", "kind", "x", "y", "vx", "vy", "radius"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "实体唯一标识（UUID），场景内不重复。"
+        },
+        "kind": {
+          "type": "string",
+          "const": "ball",
+          "description": "判别联合字段，固定为 'ball'。"
+        },
+        "x": {
+          "type": "number",
+          "description": "世界坐标 X（像素）。"
+        },
+        "y": {
+          "type": "number",
+          "description": "世界坐标 Y（像素）。"
+        },
+        "vx": {
+          "type": "number",
+          "description": "速度 X。编辑态保存时必须为 0。"
+        },
+        "vy": {
+          "type": "number",
+          "description": "速度 Y。编辑态保存时必须为 0。"
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "半径（像素），必须大于 0，默认 16。"
+        }
+      }
+    },
+    "Block": {
+      "type": "object",
+      "title": "Block",
+      "description": "方块：静态碰撞体，始终不移动，用于搭建轨道和结构。",
+      "required": ["id", "kind", "x", "y", "width", "height", "rotation"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "block"
+        },
+        "x": {
+          "type": "number",
+          "description": "中心位置 X（像素）。"
+        },
+        "y": {
+          "type": "number",
+          "description": "中心位置 Y（像素）。"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "宽度（像素），默认 80。"
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "高度（像素），默认 20。"
+        },
+        "rotation": {
+          "type": "number",
+          "description": "旋转角度（弧度）。正值顺时针，0 为水平。"
+        }
+      }
+    },
+    "MusicBlock": {
+      "type": "object",
+      "title": "MusicBlock",
+      "description": "音乐方块：静态触发体，被小球碰撞时触发音符发声。无 durationMs 字段——音符持续时长由 volume 驱动的自然衰减决定。",
+      "required": ["id", "kind", "x", "y", "width", "height", "noteName", "volume", "timbre"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "music-block"
+        },
+        "x": {
+          "type": "number",
+          "description": "中心位置 X（像素）。"
+        },
+        "y": {
+          "type": "number",
+          "description": "中心位置 Y（像素）。"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "宽度（像素），默认 60。"
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "高度（像素），默认 20。"
+        },
+        "noteName": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-G][#b]?[0-9]$",
+          "description": "音名，如 'C4'、'A#3'、'Bb5'。决定发声音高，映射到十二平均律频率。"
+        },
+        "volume": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "音量（0~1）。触发瞬间的初始响度，同时决定自然衰减时长。反序列化时超范围值夹紧而非拒绝。"
+        },
+        "timbre": {
+          "type": "string",
+          "const": "piano",
+          "description": "音色，v1 固定为 'piano'，不暴露选择。"
+        }
+      },
+      "not": {
+        "required": ["durationMs"],
+        "description": "durationMs 字段不应存在于 MusicBlock 中。"
+      }
+    }
+  }
+}

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marble Music — 音乐物理沙盒</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #1a1a2e;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        color: #e0e0e0;
+      }
+
+      #app-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #main-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: calc(100% - 120px);
+        display: block;
+        cursor: crosshair;
+      }
+
+      #timeline-canvas {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 120px;
+        display: block;
+        background: #0f0f1e;
+        border-top: 1px solid #2a2a4e;
+      }
+
+      #panel-container {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: calc(100% - 120px);
+        background: rgba(15, 15, 30, 0.9);
+        border-left: 1px solid #2a2a4e;
+        z-index: 10;
+        pointer-events: auto;
+      }
+
+      #hud-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: calc(100% - 120px);
+        pointer-events: none;
+        z-index: 20;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app-container">
+      <canvas id="main-canvas"></canvas>
+      <canvas id="timeline-canvas"></canvas>
+      <div id="panel-container"></div>
+      <div id="hud-container"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
