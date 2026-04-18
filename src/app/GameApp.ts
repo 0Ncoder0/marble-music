@@ -103,7 +103,7 @@ export class GameApp {
     const timelineCanvasEl = document.getElementById('timeline-canvas') as HTMLCanvasElement;
 
     // 设置主画布像素尺寸与 CSS 布局一致
-    mainCanvas.width = window.innerWidth;
+    mainCanvas.width = window.innerWidth - 200;
     mainCanvas.height = window.innerHeight - 120;
 
     // 设置 timeline canvas 尺寸
