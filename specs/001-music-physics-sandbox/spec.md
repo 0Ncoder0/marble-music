@@ -7,7 +7,7 @@
 
 ---
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 — 搭建场景并触发碰撞音乐 (Priority: P1)
 
@@ -110,7 +110,7 @@
 
 ---
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -176,7 +176,7 @@
 
 ---
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **Ball（小球）**: 动态物理实体，在播放模式下受重力运动。关键属性：位置（x, y）、速度（vx, vy）、半径（radius）。编辑态速度始终为零，可被选为跟随目标。
 - **Block（方块）**: 静态碰撞体，构成轨道、斜坡、边界结构。关键属性：位置（x, y）、宽高（width, height）、旋转角度（rotation）。始终不移动。
@@ -186,7 +186,7 @@
 
 ---
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

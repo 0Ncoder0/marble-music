@@ -1,6 +1,6 @@
-import { PHYSICS_CONFIG, PREDICTION_MAX_STEPS } from '../constants.js';
-import type { PredictedNote, AppMode } from '../scene/types.js';
-import { TRAJECTORY_COLORS } from './CanvasRenderer.js';
+import { PHYSICS_CONFIG, PREDICTION_MAX_STEPS } from "../constants.js";
+import type { PredictedNote, AppMode } from "../scene/types.js";
+import { TRAJECTORY_COLORS } from "./CanvasRenderer.js";
 
 // ─── 音名解析 ────────────────────────────────────────────────────────────────
 
@@ -11,7 +11,7 @@ const SEMITONES_FROM_C: Record<string, number> = {
   F: 5,
   G: 7,
   A: 9,
-  B: 11,
+  B: 11
 };
 
 /**
@@ -28,7 +28,7 @@ function noteNameToSemitoneFromC4(noteName: string): number {
   const octave = parseInt(match[3], 10);
 
   const semitonesFromC = SEMITONES_FROM_C[letter] ?? 0;
-  const acc = accidental === '#' ? 1 : accidental === 'b' ? -1 : 0;
+  const acc = accidental === "#" ? 1 : accidental === "b" ? -1 : 0;
 
   // MIDI: C4 = 60 = (4+1)*12
   const midi = (octave + 1) * 12 + semitonesFromC + acc;
@@ -60,17 +60,17 @@ export class TimelineStaffRenderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this._canvas = canvas;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Unable to get 2D context from timeline-canvas');
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Unable to get 2D context from timeline-canvas");
     this._ctx = ctx;
   }
 
   hide(): void {
-    this._canvas.style.display = 'none';
+    this._canvas.style.display = "none";
   }
 
   show(): void {
-    this._canvas.style.display = '';
+    this._canvas.style.display = "";
   }
 
   /**
@@ -84,13 +84,13 @@ export class TimelineStaffRenderer {
 
     ctx.clearRect(0, 0, width, height);
 
-    if (mode === 'play') return;
+    if (mode === "play") return;
 
     // 收集所有出现的 ballId（保持稳定顺序）
     const ballIds = this._collectBallIds(predictedNotes);
 
     // 绘制背景
-    ctx.fillStyle = '#1a1a2e';
+    ctx.fillStyle = "#1a1a2e";
     ctx.fillRect(0, 0, width, height);
 
     const trackCount = Math.max(1, ballIds.length);
@@ -106,7 +106,7 @@ export class TimelineStaffRenderer {
       const ballId = ballIds[i];
       const trackY = i * trackHeight;
       const color = TRAJECTORY_COLORS[i % TRAJECTORY_COLORS.length];
-      const trackNotes = predictedNotes.filter((n) => n.ballId === ballId);
+      const trackNotes = predictedNotes.filter(n => n.ballId === ballId);
 
       this._drawTrack(ctx, trackY, trackHeight, ballId, trackNotes, color, width);
     }
@@ -126,17 +126,9 @@ export class TimelineStaffRenderer {
     return ids;
   }
 
-  private _drawTrack(
-    ctx: CanvasRenderingContext2D,
-    trackY: number,
-    trackHeight: number,
-    ballId: string,
-    notes: PredictedNote[],
-    color: string,
-    canvasWidth: number,
-  ): void {
+  private _drawTrack(ctx: CanvasRenderingContext2D, trackY: number, trackHeight: number, ballId: string, notes: PredictedNote[], color: string, canvasWidth: number): void {
     // 轨道分隔线
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, trackY);
@@ -150,8 +142,8 @@ export class TimelineStaffRenderer {
     ctx.fillStyle = color;
     ctx.globalAlpha = 0.6;
     ctx.font = `10px sans-serif`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
     ctx.fillText(ballId.slice(-4), 4, trackY + 2); // 显示 ID 末 4 位
     ctx.globalAlpha = 1;
 
@@ -177,12 +169,7 @@ export class TimelineStaffRenderer {
     }
   }
 
-  private _drawStaffLines(
-    ctx: CanvasRenderingContext2D,
-    trackY: number,
-    trackHeight: number,
-    color: string,
-  ): void {
+  private _drawStaffLines(ctx: CanvasRenderingContext2D, trackY: number, trackHeight: number, color: string): void {
     const staffHeight = trackHeight * STAFF_HEIGHT_RATIO;
     const staffTop = trackY + (trackHeight - staffHeight) / 2;
     const lineSpacing = staffHeight / 4; // 5 条线 = 4 段间距

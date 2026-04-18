@@ -1,4 +1,4 @@
-import { GameApp } from './app/GameApp.js';
+import { GameApp } from "./app/GameApp.js";
 
 async function main(): Promise<void> {
   const app = await GameApp.create();

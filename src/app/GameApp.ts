@@ -1,19 +1,19 @@
-import { ModeController } from './ModeController.js';
-import { InputController } from './InputController.js';
-import { SceneManager } from '../scene/SceneManager.js';
-import { PhysicsWorld } from '../physics/PhysicsWorld.js';
-import { PredictionEngine } from '../physics/PredictionEngine.js';
-import { CameraFollowController } from '../physics/CameraFollowController.js';
-import { AudioEngine } from '../audio/AudioEngine.js';
-import { PianoSynth } from '../audio/PianoSynth.js';
-import { CanvasRenderer } from '../ui/CanvasRenderer.js';
-import { TimelineStaffRenderer } from '../ui/TimelineStaffRenderer.js';
-import { PanelRenderer } from '../ui/PanelRenderer.js';
-import { HudRenderer } from '../ui/HudRenderer.js';
-import { LocalSaveRepository } from '../persistence/LocalSaveRepository.js';
-import { createEmptyScene } from '../persistence/SceneSerializer.js';
-import { PHYSICS_CONFIG } from '../constants.js';
-import type { Scene, SaveStatus } from '../scene/types.js';
+import { ModeController } from "./ModeController.js";
+import { InputController } from "./InputController.js";
+import { SceneManager } from "../scene/SceneManager.js";
+import { PhysicsWorld } from "../physics/PhysicsWorld.js";
+import { PredictionEngine } from "../physics/PredictionEngine.js";
+import { CameraFollowController } from "../physics/CameraFollowController.js";
+import { AudioEngine } from "../audio/AudioEngine.js";
+import { PianoSynth } from "../audio/PianoSynth.js";
+import { CanvasRenderer } from "../ui/CanvasRenderer.js";
+import { TimelineStaffRenderer } from "../ui/TimelineStaffRenderer.js";
+import { PanelRenderer } from "../ui/PanelRenderer.js";
+import { HudRenderer } from "../ui/HudRenderer.js";
+import { LocalSaveRepository } from "../persistence/LocalSaveRepository.js";
+import { createEmptyScene } from "../persistence/SceneSerializer.js";
+import { PHYSICS_CONFIG } from "../constants.js";
+import type { Scene, SaveStatus } from "../scene/types.js";
 
 /** FPS 滑动窗口大小（帧数） */
 const FPS_WINDOW = 60;
@@ -35,7 +35,7 @@ export class GameApp {
 
   private _rafId = 0;
   private _lastTimestamp = 0;
-  private _currentSaveStatus: SaveStatus = 'idle';
+  private _currentSaveStatus: SaveStatus = "idle";
   /** 进入播放态前的场景深拷贝快照，退出时用于恢复实体初始位置 */
   private _playSnapshot: Scene | null = null;
   /** T070: 防重入守卫，防止 ModeController 回调触发递归切换 */
@@ -67,7 +67,7 @@ export class GameApp {
     timelineRenderer: TimelineStaffRenderer,
     panelRenderer: PanelRenderer,
     hudRenderer: HudRenderer,
-    localSaveRepo: LocalSaveRepository,
+    localSaveRepo: LocalSaveRepository
   ) {
     this._modeController = modeController;
     this._sceneManager = sceneManager;
@@ -84,8 +84,8 @@ export class GameApp {
     this._localSaveRepo = localSaveRepo;
 
     // 订阅模式变更（同步触发）
-    this._modeController.onModeChange((mode) => {
-      if (mode === 'play') {
+    this._modeController.onModeChange(mode => {
+      if (mode === "play") {
         this._onEnterPlay();
       } else {
         this._onEnterEdit();
@@ -97,10 +97,10 @@ export class GameApp {
    * 工厂方法：初始化所有子系统，建立 AudioContext 授权逻辑。
    */
   static async create(): Promise<GameApp> {
-    const mainCanvas = document.getElementById('main-canvas') as HTMLCanvasElement;
-    const hudContainer = document.getElementById('hud-container') as HTMLElement;
-    const panelContainer = document.getElementById('panel-container') as HTMLElement;
-    const timelineCanvasEl = document.getElementById('timeline-canvas') as HTMLCanvasElement;
+    const mainCanvas = document.getElementById("main-canvas") as HTMLCanvasElement;
+    const hudContainer = document.getElementById("hud-container") as HTMLElement;
+    const panelContainer = document.getElementById("panel-container") as HTMLElement;
+    const timelineCanvasEl = document.getElementById("timeline-canvas") as HTMLCanvasElement;
 
     // 设置主画布像素尺寸与 CSS 布局一致
     mainCanvas.width = window.innerWidth - 200;
@@ -144,11 +144,11 @@ export class GameApp {
     inputController.setPanelRenderer(panelRenderer);
 
     // AudioContext 再次被挂起时通过 tryResume() 重试
-    audioCtx.addEventListener('statechange', () => {
-      if (audioCtx.state === 'suspended') {
+    audioCtx.addEventListener("statechange", () => {
+      if (audioCtx.state === "suspended") {
         audioEngine.tryResume();
       }
-      hudRenderer.update(modeController.mode, undefined, audioCtx.state === 'suspended');
+      hudRenderer.update(modeController.mode, undefined, audioCtx.state === "suspended");
     });
 
     const app = new GameApp(
@@ -164,13 +164,13 @@ export class GameApp {
       timelineRenderer,
       panelRenderer,
       hudRenderer,
-      localSaveRepo,
+      localSaveRepo
     );
 
     // T063: 订阅保存状态变更，实时更新 HUD 右上角
-    localSaveRepo.onStatusChange((status) => {
+    localSaveRepo.onStatusChange(status => {
       app._currentSaveStatus = status;
-      hudRenderer.update(modeController.mode, status, audioCtx.state === 'suspended');
+      hudRenderer.update(modeController.mode, status, audioCtx.state === "suspended");
     });
 
     // T061: 初始化时尝试恢复场景
@@ -182,9 +182,7 @@ export class GameApp {
       if (loadError !== null) {
         // 存档损坏或版本过高：载入空场景 + 显示错误提示
         sceneManager.loadScene(createEmptyScene());
-        const errorMsg = loadError === 'version-too-high'
-          ? '存档版本过高，已载入空场景'
-          : '存档损坏，已载入空场景';
+        const errorMsg = loadError === "version-too-high" ? "存档版本过高，已载入空场景" : "存档损坏，已载入空场景";
         hudRenderer.showLoadError(errorMsg);
       }
       // loadError === null 且 restoredScene === null：无存档，保留默认空场景
@@ -194,34 +192,34 @@ export class GameApp {
     predictionEngine.invalidate();
 
     // T069: 检测 ?debug=1 并启用调试面板
-    const debugMode = new URLSearchParams(location.search).has('debug');
+    const debugMode = new URLSearchParams(location.search).has("debug");
     if (debugMode) {
       hudRenderer.enableDebugPanel(hudContainer);
     }
     app._debugMode = debugMode;
 
     // 初始 HUD
-    hudRenderer.update('edit', undefined, audioCtx.state === 'suspended');
+    hudRenderer.update("edit", undefined, audioCtx.state === "suspended");
 
     // T064: 注册页面生命周期事件（visibilitychange + beforeunload）
-    document.addEventListener('visibilitychange', () => {
+    document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         localSaveRepo.forceSave(sceneManager.getScene());
       }
     });
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener("beforeunload", () => {
       localSaveRepo.forceSave(sceneManager.getScene());
     });
 
     // T062: 订阅 SceneManager.onChange，每次场景变更触发节流保存
     sceneManager.onChange(() => {
-      if (modeController.mode === 'edit') {
+      if (modeController.mode === "edit") {
         localSaveRepo.save(sceneManager.getScene());
       }
     });
 
     // 窗口缩放时同步 canvas 像素尺寸
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
       mainCanvas.width = window.innerWidth;
       mainCanvas.height = window.innerHeight - 120;
       timelineCanvasEl.width = window.innerWidth;
@@ -278,7 +276,7 @@ export class GameApp {
     // 步骤 8: AudioEngine 进入监听态（内部调用 tryResume()）
     this._audioEngine.listen();
 
-    this._hudRenderer.update('play', undefined, this._audioCtx.state === 'suspended');
+    this._hudRenderer.update("play", undefined, this._audioCtx.state === "suspended");
   }
 
   /** Play → Edit（T027 + T036 + T045 + T052） */
@@ -323,7 +321,7 @@ export class GameApp {
     }
 
     this._canvasRenderer.enablePredictionLayer();
-    this._hudRenderer.update('edit', undefined, this._audioCtx.state === 'suspended');
+    this._hudRenderer.update("edit", undefined, this._audioCtx.state === "suspended");
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -364,14 +362,14 @@ export class GameApp {
     const mode = this._modeController.mode;
 
     // 帧序步骤 4: [仅 play] PhysicsWorld.step(FIXED_DT_MS)
-    if (mode === 'play') {
+    if (mode === "play") {
       this._physicsWorld.step(PHYSICS_CONFIG.FIXED_DT_MS);
 
       // 将物理引擎中小球的实时位置同步到 SceneManager 实体（供 CanvasRenderer 渲染正确位置）
       const ballPositions = this._physicsWorld.getBallPositions();
       const scene = this._sceneManager.getScene();
       for (const entity of scene.entities) {
-        if (entity.kind === 'ball') {
+        if (entity.kind === "ball") {
           const pos = ballPositions.get(entity.id);
           if (pos) {
             entity.x = pos.x;
@@ -382,7 +380,7 @@ export class GameApp {
     }
 
     // 帧序步骤 5: [仅 play] AudioEngine.processCollisions() + L6 脉冲特效（T068）
-    if (mode === 'play') {
+    if (mode === "play") {
       const events = this._physicsWorld.getCollisionEvents();
       this._audioEngine.processCollisions(events);
       // T068: 将碰撞事件传给 CanvasRenderer 创建脉冲环动画
@@ -398,11 +396,7 @@ export class GameApp {
     this._cameraController.update(this._physicsWorld.getBallPositions());
 
     // 帧序步骤 7: CanvasRenderer.render()（T037: 传入 predictionResult）
-    this._canvasRenderer.render(
-      this._sceneManager.getScene(),
-      this._cameraController.getCameraState(),
-      this._predictionEngine.getLatestResult(),
-    );
+    this._canvasRenderer.render(this._sceneManager.getScene(), this._cameraController.getCameraState(), this._predictionEngine.getLatestResult());
 
     // 帧序步骤 8: TimelineStaffRenderer.render()（T039）
     const predResult = this._predictionEngine.getLatestResult();
@@ -410,12 +404,10 @@ export class GameApp {
 
     // 帧序步骤 9: PanelRenderer.update() + HudRenderer.update()（T045）
     const selectedId = this._sceneManager.getSelectedId();
-    const selectedEntity = selectedId
-      ? (this._sceneManager.getScene().entities.find((e) => e.id === selectedId) ?? null)
-      : null;
+    const selectedEntity = selectedId ? (this._sceneManager.getScene().entities.find(e => e.id === selectedId) ?? null) : null;
     this._panelRenderer.update(selectedEntity, this._inputController.activeTool);
     // HUD 每帧更新（audio state 可能变化）
-    this._hudRenderer.update(mode, undefined, this._audioCtx.state === 'suspended');
+    this._hudRenderer.update(mode, undefined, this._audioCtx.state === "suspended");
 
     // 帧序步骤 10: LocalSaveRepository.tick()（T062）
     this._localSaveRepo.tick();
@@ -430,22 +422,22 @@ export class GameApp {
       mode,
       audioEngine: {
         activeVoiceCount: this._audioEngine.activeVoiceCount,
-        totalCollisionEventsReceived: this._audioEngine.totalCollisionEventsReceived,
+        totalCollisionEventsReceived: this._audioEngine.totalCollisionEventsReceived
       },
       entityCount: scene.entities.length,
-      entities: scene.entities.map((e) => ({
+      entities: scene.entities.map(e => ({
         id: e.id,
         kind: e.kind,
         x: e.x,
         y: e.y,
-        ...(e.kind === 'music-block' ? { noteName: e.noteName, volume: e.volume } : {}),
+        ...(e.kind === "music-block" ? { noteName: e.noteName, volume: e.volume } : {})
       })),
-      physicsRunning: mode === 'play',
+      physicsRunning: mode === "play",
       camera: {
         cx: cam.cx,
         cy: cam.cy,
         zoom: cam.zoom,
-        followBallId: cam.followBallId,
+        followBallId: cam.followBallId
       },
       prediction: predResult
         ? {
@@ -453,23 +445,23 @@ export class GameApp {
             trajBallCount: predResult.trajectories.size,
             computedAt: predResult.computedAt,
             lastComputeMs: predComputeMs,
-            notes: predResult.predictedNotes.map((n) => ({
+            notes: predResult.predictedNotes.map(n => ({
               timeMs: n.timeMs,
               noteName: n.noteName,
               ballId: n.ballId,
-              musicBlockId: n.musicBlockId,
-            })),
+              musicBlockId: n.musicBlockId
+            }))
           }
         : null,
       persistence: {
         saveStatus: this._currentSaveStatus,
-        loadError: this._localSaveRepo.getLoadError(),
+        loadError: this._localSaveRepo.getLoadError()
       },
       // T069: 性能指标（始终写入，供 E2E T076 断言）
       fps: this._fps,
       predictionMs: predComputeMs,
       timelineTrackCount,
-      collisionsPerSec: this._collisionsPerSec,
+      collisionsPerSec: this._collisionsPerSec
     };
 
     // T069: 调试模式下刷新可见 HUD 面板
@@ -478,7 +470,7 @@ export class GameApp {
         fps: this._fps,
         activeVoiceCount: this._audioEngine.activeVoiceCount,
         collisionsPerSec: this._collisionsPerSec,
-        predictionMs: predComputeMs,
+        predictionMs: predComputeMs
       });
     }
 

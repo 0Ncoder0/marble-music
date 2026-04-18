@@ -1,6 +1,6 @@
-import { MAX_TOTAL_VOICES, MAX_VOICES_PER_FRAME } from '../constants.js';
-import type { CollisionEvent } from '../scene/types.js';
-import type { PianoSynth } from './PianoSynth.js';
+import { MAX_TOTAL_VOICES, MAX_VOICES_PER_FRAME } from "../constants.js";
+import type { CollisionEvent } from "../scene/types.js";
+import type { PianoSynth } from "./PianoSynth.js";
 
 export class AudioEngine {
   private readonly _audioCtx: AudioContext;
@@ -29,9 +29,9 @@ export class AudioEngine {
    * 禁止在其他地方直接裸调 audioCtx.resume()。
    */
   tryResume(): void {
-    if (this._audioCtx.state === 'suspended') {
+    if (this._audioCtx.state === "suspended") {
       this._audioCtx.resume().catch((err: unknown) => {
-        console.warn('[AudioEngine] tryResume failed:', err);
+        console.warn("[AudioEngine] tryResume failed:", err);
       });
     }
   }
@@ -57,15 +57,13 @@ export class AudioEngine {
     // 始终计数（不受 AudioContext 状态影响），供 E2E 验证物理碰撞
     this._totalCollisionEventsReceived += events.length;
 
-    if (this._audioCtx.state === 'suspended') {
-      console.warn('[AudioEngine] AudioContext suspended, skipping voice creation');
+    if (this._audioCtx.state === "suspended") {
+      console.warn("[AudioEngine] AudioContext suspended, skipping voice creation");
       return;
     }
 
     if (this._activeVoiceCount >= MAX_TOTAL_VOICES) {
-      console.warn(
-        `[AudioEngine] Total voice limit (${MAX_TOTAL_VOICES}) reached, skipping all events`,
-      );
+      console.warn(`[AudioEngine] Total voice limit (${MAX_TOTAL_VOICES}) reached, skipping all events`);
       return;
     }
 
@@ -73,9 +71,7 @@ export class AudioEngine {
 
     for (const event of events) {
       if (frameTriggers >= MAX_VOICES_PER_FRAME) {
-        console.warn(
-          `[AudioEngine] Frame voice limit (${MAX_VOICES_PER_FRAME}) reached, skipping event`,
-        );
+        console.warn(`[AudioEngine] Frame voice limit (${MAX_VOICES_PER_FRAME}) reached, skipping event`);
         break;
       }
 
@@ -92,7 +88,7 @@ export class AudioEngine {
         frameTriggers++;
       } catch (err: unknown) {
         this._activeVoiceCount--;
-        console.error('[AudioEngine] Failed to create voice:', err);
+        console.error("[AudioEngine] Failed to create voice:", err);
       }
     }
   }

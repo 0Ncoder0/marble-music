@@ -1,15 +1,15 @@
-import { EntityFactory } from '../scene/EntityFactory.js';
-import type { SceneManager } from '../scene/SceneManager.js';
-import type { ModeController } from './ModeController.js';
-import type { AudioEngine } from '../audio/AudioEngine.js';
-import type { PanelRenderer } from '../ui/PanelRenderer.js';
-import type { CameraFollowController } from '../physics/CameraFollowController.js';
-import type { CameraState, Entity, MusicBlock } from '../scene/types.js';
+import { EntityFactory } from "../scene/EntityFactory.js";
+import type { SceneManager } from "../scene/SceneManager.js";
+import type { ModeController } from "./ModeController.js";
+import type { AudioEngine } from "../audio/AudioEngine.js";
+import type { PanelRenderer } from "../ui/PanelRenderer.js";
+import type { CameraFollowController } from "../physics/CameraFollowController.js";
+import type { CameraState, Entity, MusicBlock } from "../scene/types.js";
 
 /** 音名合法格式：A-G + 可选升降号(#/b) + 八度数字 0-9 */
 const NOTE_NAME_REGEX = /^[A-G][#b]?[0-9]$/;
 
-export type ActiveTool = 'ball' | 'block' | 'music-block' | 'select';
+export type ActiveTool = "ball" | "block" | "music-block" | "select";
 
 /**
  * 统一键鼠输入控制器。
@@ -19,7 +19,7 @@ export type ActiveTool = 'ball' | 'block' | 'music-block' | 'select';
  */
 export class InputController {
   private _locked = false;
-  private _activeTool: ActiveTool = 'select';
+  private _activeTool: ActiveTool = "select";
 
   private readonly _canvas: HTMLCanvasElement;
   private readonly _modeController: ModeController;
@@ -43,11 +43,7 @@ export class InputController {
   /** 是否已向 AudioEngine 发出首次 resume 请求 */
   private _firstInteractionDone = false;
 
-  constructor(
-    canvas: HTMLCanvasElement,
-    modeController: ModeController,
-    sceneManager: SceneManager,
-  ) {
+  constructor(canvas: HTMLCanvasElement, modeController: ModeController, sceneManager: SceneManager) {
     this._canvas = canvas;
     this._modeController = modeController;
     this._sceneManager = sceneManager;
@@ -77,20 +73,20 @@ export class InputController {
     this._panelRenderer = panelRenderer;
 
     // 工具切换回调
-    panelRenderer.setOnToolChange((tool) => {
+    panelRenderer.setOnToolChange(tool => {
       this._activeTool = tool;
     });
 
     // 音名变更回调：校验 → 合法时写入实体，非法时显示错误并保留旧值（FR-018）
-    panelRenderer.setOnNoteNameChange((value) => {
+    panelRenderer.setOnNoteNameChange(value => {
       const selectedId = this._sceneManager.getSelectedId();
       if (!selectedId) return;
       const entities = this._sceneManager.getScene().entities;
-      const entity = entities.find((e) => e.id === selectedId);
-      if (!entity || entity.kind !== 'music-block') return;
+      const entity = entities.find(e => e.id === selectedId);
+      if (!entity || entity.kind !== "music-block") return;
 
       if (!NOTE_NAME_REGEX.test(value)) {
-        panelRenderer.showNoteNameError('格式错误（如 C4、G#3）');
+        panelRenderer.showNoteNameError("格式错误（如 C4、G#3）");
         return; // 不写入，保留旧值
       }
       panelRenderer.clearNoteNameError();
@@ -99,12 +95,12 @@ export class InputController {
     });
 
     // 音量变更回调：夹紧到 [0, 1] 后写入
-    panelRenderer.setOnVolumeChange((value) => {
+    panelRenderer.setOnVolumeChange(value => {
       const selectedId = this._sceneManager.getSelectedId();
       if (!selectedId) return;
       const entities = this._sceneManager.getScene().entities;
-      const entity = entities.find((e) => e.id === selectedId);
-      if (!entity || entity.kind !== 'music-block') return;
+      const entity = entities.find(e => e.id === selectedId);
+      if (!entity || entity.kind !== "music-block") return;
 
       const clamped = Math.max(0, Math.min(1, value));
       this._sceneManager.updateEntity(selectedId, { volume: clamped } as Partial<MusicBlock>);
@@ -176,9 +172,9 @@ export class InputController {
     const entities = this._sceneManager.getScene().entities;
     for (let i = entities.length - 1; i >= 0; i--) {
       const e = entities[i];
-      if (e.kind === 'ball') {
+      if (e.kind === "ball") {
         if (Math.hypot(worldX - e.x, worldY - e.y) <= e.radius) return e;
-      } else if (e.kind === 'block') {
+      } else if (e.kind === "block") {
         const dx = worldX - e.x;
         const dy = worldY - e.y;
         const cos = Math.cos(-e.rotation);
@@ -186,7 +182,7 @@ export class InputController {
         const lx = dx * cos - dy * sin;
         const ly = dx * sin + dy * cos;
         if (Math.abs(lx) <= e.width / 2 && Math.abs(ly) <= e.height / 2) return e;
-      } else if (e.kind === 'music-block') {
+      } else if (e.kind === "music-block") {
         const dx = worldX - e.x;
         const dy = worldY - e.y;
         if (Math.abs(dx) <= e.width / 2 && Math.abs(dy) <= e.height / 2) return e;
@@ -196,11 +192,11 @@ export class InputController {
   }
 
   private _registerListeners(): void {
-    window.addEventListener('keydown', this._onKeyDown.bind(this));
-    window.addEventListener('mousedown', this._onMouseDown.bind(this));
-    window.addEventListener('mousemove', this._onMouseMove.bind(this));
-    window.addEventListener('mouseup', this._onMouseUp.bind(this));
-    this._canvas.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
+    window.addEventListener("keydown", this._onKeyDown.bind(this));
+    window.addEventListener("mousedown", this._onMouseDown.bind(this));
+    window.addEventListener("mousemove", this._onMouseMove.bind(this));
+    window.addEventListener("mouseup", this._onMouseUp.bind(this));
+    this._canvas.addEventListener("wheel", this._onWheel.bind(this), { passive: false });
   }
 
   // ──────────────────────── 事件处理 ────────────────────────
@@ -209,9 +205,9 @@ export class InputController {
     this._tryResumeAudio();
 
     // Space / Esc 在编辑态和播放态均响应（不受 isLocked 限制）
-    if (e.code === 'Space') {
+    if (e.code === "Space") {
       e.preventDefault();
-      if (this._modeController.mode === 'edit') {
+      if (this._modeController.mode === "edit") {
         this._modeController.startPlay();
       } else {
         this._modeController.stopPlay();
@@ -219,12 +215,12 @@ export class InputController {
       return;
     }
 
-    if (e.code === 'Escape') {
-      if (this._modeController.mode === 'play') {
+    if (e.code === "Escape") {
+      if (this._modeController.mode === "play") {
         this._modeController.stopPlay();
       } else {
         // 编辑态：取消当前工具选择（FR-009）
-        this._activeTool = 'select';
+        this._activeTool = "select";
       }
       return;
     }
@@ -233,17 +229,17 @@ export class InputController {
     if (this._locked) return;
 
     switch (e.code) {
-      case 'Digit1':
-        this._activeTool = 'ball';
+      case "Digit1":
+        this._activeTool = "ball";
         break;
-      case 'Digit2':
-        this._activeTool = 'block';
+      case "Digit2":
+        this._activeTool = "block";
         break;
-      case 'Digit3':
-        this._activeTool = 'music-block';
+      case "Digit3":
+        this._activeTool = "music-block";
         break;
-      case 'Delete':
-      case 'Backspace': {
+      case "Delete":
+      case "Backspace": {
         const selectedId = this._sceneManager.getSelectedId();
         if (selectedId) {
           this._sceneManager.removeEntity(selectedId);
@@ -272,12 +268,7 @@ export class InputController {
 
     // 只处理落在主画布边界内的点击（通过坐标范围判断，比 target 检测更稳健）
     const rect = this._canvas.getBoundingClientRect();
-    if (
-      e.clientX < rect.left ||
-      e.clientX > rect.right ||
-      e.clientY < rect.top ||
-      e.clientY > rect.bottom
-    ) {
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
       return;
     }
 
@@ -294,11 +285,11 @@ export class InputController {
     } else {
       // 点击空白区域：取消选中，若有工具则放置新实体
       this._sceneManager.setSelectedId(null);
-      if (this._activeTool !== 'select') {
+      if (this._activeTool !== "select") {
         const entity =
-          this._activeTool === 'ball'
+          this._activeTool === "ball"
             ? EntityFactory.createBall(worldPos.x, worldPos.y)
-            : this._activeTool === 'block'
+            : this._activeTool === "block"
               ? EntityFactory.createBlock(worldPos.x, worldPos.y)
               : EntityFactory.createMusicBlock(worldPos.x, worldPos.y);
         this._sceneManager.addEntity(entity);
@@ -330,7 +321,7 @@ export class InputController {
     const worldPos = this._toWorld(e.clientX, e.clientY);
     this._sceneManager.updateEntity(this._dragEntityId, {
       x: worldPos.x - this._dragOffsetX,
-      y: worldPos.y - this._dragOffsetY,
+      y: worldPos.y - this._dragOffsetY
     });
   }
 

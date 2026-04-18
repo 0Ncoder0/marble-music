@@ -1,4 +1,4 @@
-import type { Entity, Scene, SceneSnapshot, Vec2 } from './types.js';
+import type { Entity, Scene, SceneSnapshot, Vec2 } from "./types.js";
 
 /** 最小接口：SceneManager 只需要知道如何通知预测引擎"标脏" */
 export interface PredictionEngineRef {
@@ -13,10 +13,10 @@ export class SceneManager {
   constructor() {
     this._scene = {
       id: crypto.randomUUID(),
-      mode: 'edit',
+      mode: "edit",
       gravity: { x: 0, y: 9.8 },
       selectedBallId: null,
-      entities: [],
+      entities: []
     };
   }
 
@@ -26,7 +26,7 @@ export class SceneManager {
   }
 
   removeEntity(id: string): void {
-    const idx = this._scene.entities.findIndex((e) => e.id === id);
+    const idx = this._scene.entities.findIndex(e => e.id === id);
     if (idx === -1) return;
     this._scene.entities.splice(idx, 1);
 
@@ -38,7 +38,7 @@ export class SceneManager {
   }
 
   updateEntity(id: string, partial: Partial<Entity>): void {
-    const entity = this._scene.entities.find((e) => e.id === id);
+    const entity = this._scene.entities.find(e => e.id === id);
     if (!entity) return;
     Object.assign(entity, partial);
     this._notifyChange();
@@ -47,7 +47,7 @@ export class SceneManager {
   getSnapshot(): SceneSnapshot {
     return {
       entities: JSON.parse(JSON.stringify(this._scene.entities)) as Entity[],
-      gravity: { ...this._scene.gravity } as Vec2,
+      gravity: { ...this._scene.gravity } as Vec2
     };
   }
 

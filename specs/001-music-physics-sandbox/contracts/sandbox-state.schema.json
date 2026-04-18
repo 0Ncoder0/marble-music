@@ -50,10 +50,7 @@
           "description": "重力向量，默认 { x: 0, y: 9.8 }。v1 不提供面向玩家的 UI 调整。"
         },
         "selectedBallId": {
-          "oneOf": [
-            { "type": "string", "minLength": 1 },
-            { "type": "null" }
-          ],
+          "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }],
           "description": "当前选中球的实体 ID，null 表示无选中。若非 null，必须对应 entities 中存在的 Ball。"
         },
         "entities": {
@@ -66,11 +63,7 @@
       }
     },
     "Entity": {
-      "oneOf": [
-        { "$ref": "#/definitions/Ball" },
-        { "$ref": "#/definitions/Block" },
-        { "$ref": "#/definitions/MusicBlock" }
-      ],
+      "oneOf": [{ "$ref": "#/definitions/Ball" }, { "$ref": "#/definitions/Block" }, { "$ref": "#/definitions/MusicBlock" }],
       "description": "实体联合类型，通过 kind 字段区分（discriminated union）。"
     },
     "Ball": {

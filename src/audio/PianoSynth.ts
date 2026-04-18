@@ -1,15 +1,15 @@
-import { BASE_DECAY_S, VOLUME_DECAY_SCALE_S } from '../constants.js';
+import { BASE_DECAY_S, VOLUME_DECAY_SCALE_S } from "../constants.js";
 
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] as const;
 
 const ENHARMONICS: Record<string, string> = {
-  Db: 'C#',
-  Eb: 'D#',
-  Fb: 'E',
-  Gb: 'F#',
-  Ab: 'G#',
-  Bb: 'A#',
-  Cb: 'B',
+  Db: "C#",
+  Eb: "D#",
+  Fb: "E",
+  Gb: "F#",
+  Ab: "G#",
+  Bb: "A#",
+  Cb: "B"
 };
 
 /** 将音名转换为 MIDI 编号，再映射到频率（十二平均律）。*/
@@ -43,19 +43,14 @@ export function noteNameToFrequency(noteName: string): number {
  * Decay: (BASE_DECAY_S + volume * VOLUME_DECAY_SCALE_S) 秒指数衰减至 0.001
  * 衰减结束后 stop() → disconnect() → 调用 onEnded
  */
-export function createVoice(
-  noteName: string,
-  volume: number,
-  audioCtx: AudioContext,
-  onEnded: () => void,
-): void {
+export function createVoice(noteName: string, volume: number, audioCtx: AudioContext, onEnded: () => void): void {
   const freq = noteNameToFrequency(noteName);
   const now = audioCtx.currentTime;
 
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
 
-  osc.type = 'sine';
+  osc.type = "sine";
   osc.frequency.value = freq;
 
   const attackDuration = 0.008; // 8ms
@@ -71,7 +66,7 @@ export function createVoice(
 
   osc.start(now);
   osc.stop(stopTime);
-  osc.addEventListener('ended', () => {
+  osc.addEventListener("ended", () => {
     osc.disconnect();
     gain.disconnect();
     onEnded();
@@ -83,12 +78,7 @@ export class PianoSynth {
     return noteNameToFrequency(noteName);
   }
 
-  createVoice(
-    noteName: string,
-    volume: number,
-    audioCtx: AudioContext,
-    onEnded: () => void,
-  ): void {
+  createVoice(noteName: string, volume: number, audioCtx: AudioContext, onEnded: () => void): void {
     createVoice(noteName, volume, audioCtx, onEnded);
   }
 }

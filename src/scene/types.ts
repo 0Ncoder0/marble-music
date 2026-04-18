@@ -1,18 +1,14 @@
 export type Vec2 = { x: number; y: number };
 
-export type AppMode = 'edit' | 'play';
+export type AppMode = "edit" | "play";
 
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
+export type SaveStatus = "idle" | "saving" | "saved" | "failed";
 
-export type LoadError =
-  | 'corrupted'
-  | 'version-too-high'
-  | 'incomplete-data'
-  | null;
+export type LoadError = "corrupted" | "version-too-high" | "incomplete-data" | null;
 
 export interface Ball {
   id: string;
-  kind: 'ball';
+  kind: "ball";
   x: number;
   y: number;
   vx: number;
@@ -22,7 +18,7 @@ export interface Ball {
 
 export interface Block {
   id: string;
-  kind: 'block';
+  kind: "block";
   x: number;
   y: number;
   width: number;
@@ -32,14 +28,14 @@ export interface Block {
 
 export interface MusicBlock {
   id: string;
-  kind: 'music-block';
+  kind: "music-block";
   x: number;
   y: number;
   width: number;
   height: number;
   noteName: string;
   volume: number;
-  timbre: 'piano';
+  timbre: "piano";
 }
 
 export type Entity = Ball | Block | MusicBlock;

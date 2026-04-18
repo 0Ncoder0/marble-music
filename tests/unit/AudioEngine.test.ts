@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AudioEngine } from '../../src/audio/AudioEngine.js';
-import { PianoSynth } from '../../src/audio/PianoSynth.js';
-import { MAX_VOICES_PER_FRAME, MAX_TOTAL_VOICES } from '../../src/constants.js';
-import type { CollisionEvent } from '../../src/scene/types.js';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { AudioEngine } from "../../src/audio/AudioEngine.js";
+import { PianoSynth } from "../../src/audio/PianoSynth.js";
+import { MAX_VOICES_PER_FRAME, MAX_TOTAL_VOICES } from "../../src/constants.js";
+import type { CollisionEvent } from "../../src/scene/types.js";
 
 // ──────────────────────────────────────────────────
 // Web Audio API Mock（jsdom 环境无真实实现）
@@ -28,7 +28,7 @@ class MockGainNode {
 }
 
 class MockOscillatorNode {
-  type: OscillatorType = 'sine';
+  type: OscillatorType = "sine";
   frequency = new MockGainParam();
   scheduledStopTime = 0;
   private readonly _endedCbs: Array<() => void> = [];
@@ -40,7 +40,7 @@ class MockOscillatorNode {
     this.scheduledStopTime = time;
   }
   addEventListener(event: string, cb: () => void) {
-    if (event === 'ended') this._endedCbs.push(cb);
+    if (event === "ended") this._endedCbs.push(cb);
   }
   /** 测试辅助：手动触发 ended 事件 */
   fireEnded() {
@@ -49,7 +49,7 @@ class MockOscillatorNode {
 }
 
 class MockAudioContext {
-  state: AudioContextState = 'running';
+  state: AudioContextState = "running";
   currentTime = 0;
   destination = {} as AudioDestinationNode;
   readonly oscillators: MockOscillatorNode[] = [];
@@ -77,13 +77,13 @@ function makeCtx(): MockAudioContext {
   return new MockAudioContext();
 }
 
-function makeEvent(noteName = 'C4', volume = 0.5): CollisionEvent {
+function makeEvent(noteName = "C4", volume = 0.5): CollisionEvent {
   return {
-    ballId: 'ball-1',
-    musicBlockId: 'mb-1',
+    ballId: "ball-1",
+    musicBlockId: "mb-1",
     noteName,
     volume,
-    timestamp: 0,
+    timestamp: 0
   };
 }
 
@@ -91,7 +91,7 @@ function makeEvent(noteName = 'C4', volume = 0.5): CollisionEvent {
 // 测试
 // ──────────────────────────────────────────────────
 
-describe('AudioEngine', () => {
+describe("AudioEngine", () => {
   let ctx: MockAudioContext;
   let synth: PianoSynth;
   let engine: AudioEngine;
@@ -103,19 +103,19 @@ describe('AudioEngine', () => {
     engine.listen();
   });
 
-  it('AE-01: 触发一次碰撞事件创建独立 voice，activeVoiceCount+1', () => {
+  it("AE-01: 触发一次碰撞事件创建独立 voice，activeVoiceCount+1", () => {
     expect(engine.activeVoiceCount).toBe(0);
     engine.processCollisions([makeEvent()]);
     expect(engine.activeVoiceCount).toBe(1);
   });
 
-  it('AE-02: 连续两次触发产生两个独立 voice', () => {
-    engine.processCollisions([makeEvent('C4')]);
-    engine.processCollisions([makeEvent('G4')]);
+  it("AE-02: 连续两次触发产生两个独立 voice", () => {
+    engine.processCollisions([makeEvent("C4")]);
+    engine.processCollisions([makeEvent("G4")]);
     expect(engine.activeVoiceCount).toBe(2);
   });
 
-  it('AE-03: voice 衰减结束（ended 事件）后 activeVoiceCount-1', () => {
+  it("AE-03: voice 衰减结束（ended 事件）后 activeVoiceCount-1", () => {
     engine.processCollisions([makeEvent()]);
     expect(engine.activeVoiceCount).toBe(1);
 
@@ -124,20 +124,17 @@ describe('AudioEngine', () => {
     expect(engine.activeVoiceCount).toBe(0);
   });
 
-  it('AE-04: 同帧超过 MAX_VOICES_PER_FRAME 上限时跳过，不崩溃', () => {
+  it("AE-04: 同帧超过 MAX_VOICES_PER_FRAME 上限时跳过，不崩溃", () => {
     const events = Array.from({ length: MAX_VOICES_PER_FRAME + 5 }, () => makeEvent());
     expect(() => engine.processCollisions(events)).not.toThrow();
     expect(engine.activeVoiceCount).toBeLessThanOrEqual(MAX_VOICES_PER_FRAME);
   });
 
-  it('AE-05: 总活跃 voice 达到 MAX_TOTAL_VOICES 时跳过新触发，不崩溃', () => {
+  it("AE-05: 总活跃 voice 达到 MAX_TOTAL_VOICES 时跳过新触发，不崩溃", () => {
     // 分批创建 MAX_TOTAL_VOICES 个 voice（每批最多 MAX_VOICES_PER_FRAME）
     const batchCount = Math.ceil(MAX_TOTAL_VOICES / MAX_VOICES_PER_FRAME);
     for (let i = 0; i < batchCount; i++) {
-      const batchSize = Math.min(
-        MAX_VOICES_PER_FRAME,
-        MAX_TOTAL_VOICES - engine.activeVoiceCount,
-      );
+      const batchSize = Math.min(MAX_VOICES_PER_FRAME, MAX_TOTAL_VOICES - engine.activeVoiceCount);
       if (batchSize <= 0) break;
       engine.processCollisions(Array.from({ length: batchSize }, () => makeEvent()));
     }
@@ -148,10 +145,10 @@ describe('AudioEngine', () => {
     expect(engine.activeVoiceCount).toBe(MAX_TOTAL_VOICES);
   });
 
-  it('AE-06: 高音量 voice 停止时间晚于低音量（指数衰减时长更长）', () => {
+  it("AE-06: 高音量 voice 停止时间晚于低音量（指数衰减时长更长）", () => {
     // 两次触发：低音量 → 高音量
-    engine.processCollisions([makeEvent('C4', 0.1)]);
-    engine.processCollisions([makeEvent('C4', 0.9)]);
+    engine.processCollisions([makeEvent("C4", 0.1)]);
+    engine.processCollisions([makeEvent("C4", 0.9)]);
 
     const oscLow = ctx.oscillators[0];
     const oscHigh = ctx.oscillators[1];
@@ -162,10 +159,10 @@ describe('AudioEngine', () => {
     expect(oscHigh.scheduledStopTime).toBeGreaterThan(oscLow.scheduledStopTime);
   });
 
-  it('AE-07: 无 durationMs 参数时，voice 仅依赖 volume 衰减正常工作', () => {
+  it("AE-07: 无 durationMs 参数时，voice 仅依赖 volume 衰减正常工作", () => {
     // CollisionEvent 不含 durationMs，voice 创建不应依赖它
-    const event = makeEvent('A4', 0.7);
-    expect('durationMs' in event).toBe(false);
+    const event = makeEvent("A4", 0.7);
+    expect("durationMs" in event).toBe(false);
 
     expect(() => engine.processCollisions([event])).not.toThrow();
     expect(engine.activeVoiceCount).toBe(1);
@@ -175,27 +172,27 @@ describe('AudioEngine', () => {
     expect(osc.scheduledStopTime).toBeGreaterThan(0);
   });
 
-  it('AE: stopListening 后 processCollisions 不再创建 voice', () => {
+  it("AE: stopListening 后 processCollisions 不再创建 voice", () => {
     engine.stopListening();
     engine.processCollisions([makeEvent()]);
     expect(engine.activeVoiceCount).toBe(0);
   });
 
-  it('AE: AudioContext suspended 时跳过 voice 创建', () => {
+  it("AE: AudioContext suspended 时跳过 voice 创建", () => {
     const suspendedCtx = makeCtx();
-    suspendedCtx.state = 'suspended';
+    suspendedCtx.state = "suspended";
     const suspendedEngine = new AudioEngine(suspendedCtx as unknown as AudioContext, synth);
     suspendedEngine.listen();
 
     // tryResume 应该被调用（mocked）
-    vi.spyOn(suspendedCtx, 'resume').mockResolvedValue(undefined);
+    vi.spyOn(suspendedCtx, "resume").mockResolvedValue(undefined);
 
     suspendedEngine.processCollisions([makeEvent()]);
     expect(suspendedEngine.activeVoiceCount).toBe(0);
   });
 
-  it('AE: 非法 noteName 被跳过，不崩溃', () => {
-    engine.processCollisions([{ ...makeEvent(), noteName: 'INVALID' }]);
+  it("AE: 非法 noteName 被跳过，不崩溃", () => {
+    engine.processCollisions([{ ...makeEvent(), noteName: "INVALID" }]);
     expect(engine.activeVoiceCount).toBe(0);
   });
 });

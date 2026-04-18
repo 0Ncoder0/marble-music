@@ -19,17 +19,20 @@
 **决策**：使用 Matter.js `Engine.update(engine, FIXED_DT_MS)` 手动驱动固定步长，而非 `Runner`（Runner 会绑定 requestAnimationFrame 且步长不固定）。
 
 **实现要点**：
+
 - `FIXED_DT_MS = 1000 / 60`（约 16.67ms）
 - 小球：`Matter.Bodies.circle(x, y, r, { isStatic: false })`
 - 方块 / 音乐方块：`Matter.Bodies.rectangle(x, y, w, h, { isStatic: true })`
 - 碰撞事件：`Matter.Events.on(engine, 'collisionStart', handler)`，在 handler 中检查碰撞对，确认一方为 Ball、另一方为 MusicBlock
 
 **预测克隆策略**：
+
 - PredictionEngine 每次运行时，通过 `Matter.Engine.create()` 创建全新独立 Engine
 - 从 SceneManager 获取当前场景快照，重新创建对应刚体（不复用主 Engine 的刚体）
 - 模拟完成后调用 `Matter.World.clear()` + `Matter.Engine.clear()` 彻底销毁
 
 **替代方案考虑**：
+
 - 使用 Matter.js `Runner`：被拒绝（步长不固定，预测与播放会产生系统性偏差，违反 TR-07 缓解原则）
 - 在主 Engine 上运行预测：被拒绝（会污染播放态物理状态，需要复杂的状态回滚）
 
@@ -50,27 +53,30 @@
 function createVoice(noteName: string, volume: number, audioCtx: AudioContext): void {
   const freq = noteNameToFrequency(noteName);
   const now = audioCtx.currentTime;
-  
+
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
-  
-  osc.type = 'sine';   // 基频
+
+  osc.type = "sine"; // 基频
   osc.frequency.value = freq;
-  
+
   // Attack: 5~10ms 线性上升
   gain.gain.setValueAtTime(0, now);
   gain.gain.linearRampToValueAtTime(volume, now + 0.008);
-  
+
   // Decay: 指数衰减
-  const decayTime = 0.2 + volume * 2.0;  // BASE_DECAY=200ms + volume*2000ms
+  const decayTime = 0.2 + volume * 2.0; // BASE_DECAY=200ms + volume*2000ms
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.008 + decayTime);
-  
+
   osc.connect(gain);
   gain.connect(audioCtx.destination);
-  
+
   osc.start(now);
   osc.stop(now + 0.008 + decayTime);
-  osc.addEventListener('ended', () => { osc.disconnect(); gain.disconnect(); });
+  osc.addEventListener("ended", () => {
+    osc.disconnect();
+    gain.disconnect();
+  });
 }
 ```
 
@@ -83,6 +89,7 @@ freq(noteName) = 440 * 2^((midiNote - 69) / 12)
 MIDI 音高编号：A4 = 69，C4 = 60，以此推算。
 
 **替代方案**：
+
 - 使用 AudioWorkletNode 实现更复杂的 FM 合成：被拒绝（v1 复杂度过高，且音频延迟需要精细调优）
 - 加载采样音频文件（.mp3/.ogg）：被拒绝（需要网络资源或打包，增加构建复杂度；v1 目标是零资源依赖）
 
@@ -114,6 +121,7 @@ L6: [仅播放态] 音乐活动脉冲环（arc，随 voice gain 缩放半径和 
 **Timeline 五线谱**：独立 Canvas 元素（底部固定区域），不参与主相机变换，直接在屏幕坐标系绘制。
 
 **替代方案**：
+
 - 多 Canvas 分层（每层独立 Canvas，CSS 绝对定位叠加）：被拒绝（DOM 层级复杂，触发事件需要额外路由；实体数量 ≤25，单 Canvas 帧渲染耗时远 <1ms）
 
 ---
@@ -123,11 +131,13 @@ L6: [仅播放态] 音乐活动脉冲环（arc，随 voice gain 缩放半径和 
 **问题**：PredictionEngine 在复杂场景（20 积木 + 5 小球）下，单次预测计算耗时是否会阻塞主线程？
 
 **分析**：
+
 - Matter.js 单步模拟（`Engine.update`）在典型场景下耗时约 0.5~2ms
 - 300 步预测（约 5 秒）= 300 × 2ms = 600ms（最差情况，20 积木 + 5 小球）
 - 若在主线程同步执行，会造成约 600ms 的界面冻结
 
 **决策（分阶段）**：
+
 - **v1**：主线程同步执行预测，通过 **150ms 去抖 + 300 步上限** 缓解高频触发
 - **v2**（可选）：若实测超过 100ms，将 PredictionEngine 迁移到 Web Worker
 
@@ -154,26 +164,27 @@ markDirty(): void {
 **问题**：如何确保 PredictionEngine 的预测结果与 PhysicsWorld 的实际播放结果高度一致？
 
 **根因分析**：不一致的来源：
+
 1. 物理引擎参数不同（重力、弹性系数、摩擦系数）
 2. 时间步长不同（预测用固定步长，播放用可变步长）
 3. 初始状态不同（预测使用场景快照，播放使用实时状态）
 
 **决策**：三个来源全部消除：
 
-| 来源 | 消除方案 |
-|------|---------|
+| 来源     | 消除方案                                                                          |
+| -------- | --------------------------------------------------------------------------------- |
 | 参数不同 | 共享 `PHYSICS_CONFIG` 常量对象，PhysicsWorld 和 PredictionEngine 均从同一来源读取 |
-| 步长不同 | 两者均使用 `FIXED_DT_MS = 1000/60`；PhysicsWorld 使用固定步长手动驱动 |
-| 初始状态 | PredictionEngine 在场景变更后立即读取最新快照；编辑态速度始终为零，快照状态确定 |
+| 步长不同 | 两者均使用 `FIXED_DT_MS = 1000/60`；PhysicsWorld 使用固定步长手动驱动             |
+| 初始状态 | PredictionEngine 在场景变更后立即读取最新快照；编辑态速度始终为零，快照状态确定   |
 
 ```typescript
 // constants.ts
 export const PHYSICS_CONFIG = {
-  gravity: { x: 0, y: 1.0 },   // Matter.js gravity scale（非 m/s²）
-  restitution: 0.7,              // 弹性系数
+  gravity: { x: 0, y: 1.0 }, // Matter.js gravity scale（非 m/s²）
+  restitution: 0.7, // 弹性系数
   friction: 0.1,
   frictionAir: 0.01,
-  FIXED_DT_MS: 1000 / 60,
+  FIXED_DT_MS: 1000 / 60
 };
 ```
 
@@ -187,15 +198,16 @@ export const PHYSICS_CONFIG = {
 
 **决策**：
 
-| 项目 | 决策 |
-|------|------|
-| 存储 Key | `"marble-music-save"`（固定，GDD 07 定稿） |
-| 节流间隔 | 1000ms（`SAVE_THROTTLE_MS`） |
-| 强制保存 | play → edit 切换时立即调用，不受节流约束 |
-| 版本 | 当前 `version: 1`；未来版本使用 `migrate(data, fromVersion)` 迁移链 |
+| 项目     | 决策                                                                            |
+| -------- | ------------------------------------------------------------------------------- |
+| 存储 Key | `"marble-music-save"`（固定，GDD 07 定稿）                                      |
+| 节流间隔 | 1000ms（`SAVE_THROTTLE_MS`）                                                    |
+| 强制保存 | play → edit 切换时立即调用，不受节流约束                                        |
+| 版本     | 当前 `version: 1`；未来版本使用 `migrate(data, fromVersion)` 迁移链             |
 | 错误处理 | try/catch 包裹所有 localStorage 操作；失败时更新 HUD 状态为 `SaveStatus.FAILED` |
 
 **反序列化验证**：
+
 - JSON 解析失败 → 空场景 + 提示
 - `version > MAX_KNOWN_VERSION` → 空场景 + 提示
 - 任何实体的 `kind` 不合法 → 空场景 + 提示
@@ -225,6 +237,7 @@ export const PHYSICS_CONFIG = {
 **问题**：如何实现平滑相机跟随，同时允许用户手动平移/缩放覆盖？
 
 **决策**：
+
 - 跟随：每帧将相机中心以 `lerp(current, target, FOLLOW_LERP)` 平滑插值（`FOLLOW_LERP = 0.1` 约等于 10% 追踪速率）
 - 手动覆盖：用户触发 wheel / middleMouseDrag / altLeftDrag 时，直接修改相机状态；不自动恢复跟随（TR-04 缓解原则：用户手动优先级高）
 - 跟随判定：仅在 `startPlay()` 时读取 `selectedBallId` 决定是否跟随，播放中不再重新判定
@@ -233,15 +246,15 @@ export const PHYSICS_CONFIG = {
 
 ## 技术决策汇总
 
-| 编号 | 决策 | 状态 |
-|------|------|------|
-| RES-01 | Matter.js 独立 Engine 克隆 + 手动固定步长驱动 | ✅ 定稿 |
+| 编号   | 决策                                                           | 状态    |
+| ------ | -------------------------------------------------------------- | ------- |
+| RES-01 | Matter.js 独立 Engine 克隆 + 手动固定步长驱动                  | ✅ 定稿 |
 | RES-02 | Web Audio API OscillatorNode 合成，音量驱动衰减，无 durationMs | ✅ 定稿 |
-| RES-03 | 单 Canvas 顺序分层渲染，Timeline 独立 Canvas | ✅ 定稿 |
-| RES-04 | 预测去抖 150ms + 步数上限 300；Web Worker 保留为 v2 选项 | ✅ 定稿 |
-| RES-05 | 预测与播放共用 PHYSICS_CONFIG 常量 + 固定步长，容差 ±50ms | ✅ 定稿 |
-| RES-06 | localStorage Key 固定，节流 1000ms，版本迁移链，无 durationMs | ✅ 定稿 |
-| RES-07 | 首次用户交互触发 AudioContext.resume()，静音降级 | ✅ 定稿 |
-| RES-08 | lerp 平滑跟随，用户手动操作直接覆盖，不自动恢复跟随 | ✅ 定稿 |
+| RES-03 | 单 Canvas 顺序分层渲染，Timeline 独立 Canvas                   | ✅ 定稿 |
+| RES-04 | 预测去抖 150ms + 步数上限 300；Web Worker 保留为 v2 选项       | ✅ 定稿 |
+| RES-05 | 预测与播放共用 PHYSICS_CONFIG 常量 + 固定步长，容差 ±50ms      | ✅ 定稿 |
+| RES-06 | localStorage Key 固定，节流 1000ms，版本迁移链，无 durationMs  | ✅ 定稿 |
+| RES-07 | 首次用户交互触发 AudioContext.resume()，静音降级               | ✅ 定稿 |
+| RES-08 | lerp 平滑跟随，用户手动操作直接覆盖，不自动恢复跟随            | ✅ 定稿 |
 
 **无 NEEDS CLARIFICATION 遗留项**——所有技术决策已解析完毕，可进入 tasks 阶段。

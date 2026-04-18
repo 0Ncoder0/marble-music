@@ -1,6 +1,6 @@
-import type { Scene, SaveStatus, LoadError } from '../scene/types.js';
-import { SAVE_KEY, SAVE_THROTTLE_MS } from '../constants.js';
-import { SceneSerializer } from './SceneSerializer.js';
+import type { Scene, SaveStatus, LoadError } from "../scene/types.js";
+import { SAVE_KEY, SAVE_THROTTLE_MS } from "../constants.js";
+import { SceneSerializer } from "./SceneSerializer.js";
 
 /**
  * localStorage 节流保存 / 强制保存 / 恢复。
@@ -28,7 +28,7 @@ export class LocalSaveRepository {
    */
   save(scene: Scene): void {
     this._pendingScene = scene;
-    this._notifyStatus('saving');
+    this._notifyStatus("saving");
 
     if (this._throttleTimer === null) {
       this._throttleTimer = setTimeout(() => {
@@ -50,10 +50,10 @@ export class LocalSaveRepository {
 
     try {
       localStorage.setItem(SAVE_KEY, this._serializer.serialize(scene));
-      this._notifyStatus('saved');
+      this._notifyStatus("saved");
     } catch (err) {
-      console.error('[LocalSaveRepository] forceSave failed:', err);
-      this._notifyStatus('failed');
+      console.error("[LocalSaveRepository] forceSave failed:", err);
+      this._notifyStatus("failed");
     }
   }
 
@@ -69,8 +69,8 @@ export class LocalSaveRepository {
     try {
       json = localStorage.getItem(SAVE_KEY);
     } catch (err) {
-      console.error('[LocalSaveRepository] localStorage.getItem failed:', err);
-      this._loadError = 'corrupted';
+      console.error("[LocalSaveRepository] localStorage.getItem failed:", err);
+      this._loadError = "corrupted";
       return null;
     }
 
@@ -111,10 +111,10 @@ export class LocalSaveRepository {
 
     try {
       localStorage.setItem(SAVE_KEY, this._serializer.serialize(scene));
-      this._notifyStatus('saved');
+      this._notifyStatus("saved");
     } catch (err) {
-      console.error('[LocalSaveRepository] save flush failed:', err);
-      this._notifyStatus('failed');
+      console.error("[LocalSaveRepository] save flush failed:", err);
+      this._notifyStatus("failed");
     }
   }
 

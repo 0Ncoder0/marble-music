@@ -3,10 +3,10 @@ export const PHYSICS_CONFIG = {
   restitution: 0.7,
   friction: 0.1,
   frictionAir: 0.01,
-  FIXED_DT_MS: 1000 / 60,
+  FIXED_DT_MS: 1000 / 60
 } as const;
 
-export const SAVE_KEY = 'marble-music-save';
+export const SAVE_KEY = "marble-music-save";
 export const SAVE_THROTTLE_MS = 1000;
 export const PREDICTION_DEBOUNCE_MS = 150;
 export const PREDICTION_MAX_STEPS = 300;

@@ -23,11 +23,12 @@
 **Project Type**: Single-page Web Application（纯前端，无路由，无框架 UI 库）  
 **Performance Goals**: 标准场景（≤20 积木、≤5 小球）60 fps 流畅渲染；碰撞到发声延迟 <20ms  
 **Constraints**:
+
 - 无暂停态（C1）——模式状态机仅 `edit` / `play` 两态
 - 无 `durationMs`（GDD 07 定稿）——音符时长完全由 `volume` 驱动的自然衰减决定
 - 预测与播放同源物理配置（TR-07 缓解）——PredictionEngine 与 PhysicsWorld 共用完全相同的 Matter.js Engine 配置和固定时间步长
 - 无导入导出、无网络请求、无移动端适配
-  
+
 **Scale/Scope**: 单 HTML 页面；实体规模 ≤ 20 积木 + 5 小球为目标性能基准
 
 ---
@@ -37,15 +38,15 @@
 > constitution.md 当前为模板占位符（未填写项目原则），不存在可失败的约束门禁。  
 > 以下改用 **GDD 全局强约束（00-index.md C1~C5）**作为等价门禁。
 
-| 门禁 | 约束 | 本次设计通过？ | 依据 |
-|------|------|-------------|------|
-| C1-GATE | 无暂停态，Space 仅播放/停止 | ✅ 通过 | ModeController 仅 `edit`/`play` 两态，详见状态机章节 |
-| C2-GATE | Timeline 是编辑态实时预测五线谱，播放时隐藏 | ✅ 通过 | TimelineStaffRenderer 仅编辑态可见；PredictionEngine 播放态停止计算 |
-| C3-GATE | 预测线仅编辑态可见 | ✅ 通过 | CanvasRenderer 在编辑态渲染预测线层（L5），播放态跳过 |
-| C4-GATE | 触发即发声，音量驱动衰减，允许重叠，无 durationMs | ✅ 通过 | AudioEngine 每次碰撞创建独立 voice；MusicBlock 无 durationMs 字段 |
-| C5-GATE | 选中球跟随策略（选中≠跟随，播放启动时判定） | ✅ 通过 | CameraFollowController 仅在 startPlay() 时读取 selectedBallId |
-| NO-PAUSE | 系统中不存在任何暂停路径 | ✅ 通过 | 状态机无第三状态；Esc 在播放态直接返回编辑态 |
-| NO-durationMs | MusicBlock 数据模型不含 durationMs | ✅ 通过 | data-model.md 及 contracts/ schema 均无此字段 |
+| 门禁          | 约束                                              | 本次设计通过？ | 依据                                                                |
+| ------------- | ------------------------------------------------- | -------------- | ------------------------------------------------------------------- |
+| C1-GATE       | 无暂停态，Space 仅播放/停止                       | ✅ 通过        | ModeController 仅 `edit`/`play` 两态，详见状态机章节                |
+| C2-GATE       | Timeline 是编辑态实时预测五线谱，播放时隐藏       | ✅ 通过        | TimelineStaffRenderer 仅编辑态可见；PredictionEngine 播放态停止计算 |
+| C3-GATE       | 预测线仅编辑态可见                                | ✅ 通过        | CanvasRenderer 在编辑态渲染预测线层（L5），播放态跳过               |
+| C4-GATE       | 触发即发声，音量驱动衰减，允许重叠，无 durationMs | ✅ 通过        | AudioEngine 每次碰撞创建独立 voice；MusicBlock 无 durationMs 字段   |
+| C5-GATE       | 选中球跟随策略（选中≠跟随，播放启动时判定）       | ✅ 通过        | CameraFollowController 仅在 startPlay() 时读取 selectedBallId       |
+| NO-PAUSE      | 系统中不存在任何暂停路径                          | ✅ 通过        | 状态机无第三状态；Esc 在播放态直接返回编辑态                        |
+| NO-durationMs | MusicBlock 数据模型不含 durationMs                | ✅ 通过        | data-model.md 及 contracts/ schema 均无此字段                       |
 
 **Gate 结论**：全部通过，可进入实现阶段。
 
@@ -171,14 +172,14 @@ marble-music/
 
 ### 分层职责总览
 
-| 层 | 模块 | 职责边界 | 关键不变量 |
-|----|------|---------|-----------|
-| 应用编排 | `GameApp` `ModeController` `InputController` | 主循环、状态机、事件路由 | 任意时刻模式唯一；输入按模式路由 |
-| 实体管理 | `SceneManager` `EntityFactory` | 实体 CRUD；变更通知；场景快照 | 实体 ID 唯一；编辑态速度为零 |
-| 物理 | `PhysicsWorld` `PredictionEngine` `CameraFollowController` | 刚体映射；碰撞事件；预测模拟 | 预测与播放同源物理配置 |
-| 音频 | `AudioEngine` `PianoSynth` | voice 生命周期；发声触发；限流 | 无 durationMs；音量驱动衰减 |
-| UI | `CanvasRenderer` `TimelineStaffRenderer` `PanelRenderer` `HudRenderer` | 渲染；用户操作转事件 | 播放态所有编辑 UI 隐藏 |
-| 持久化 | `LocalSaveRepository` `SceneSerializer` | 节流/强制保存；恢复；版本迁移 | 存档不含预测数据；mode 存为 "edit" |
+| 层       | 模块                                                                   | 职责边界                       | 关键不变量                         |
+| -------- | ---------------------------------------------------------------------- | ------------------------------ | ---------------------------------- |
+| 应用编排 | `GameApp` `ModeController` `InputController`                           | 主循环、状态机、事件路由       | 任意时刻模式唯一；输入按模式路由   |
+| 实体管理 | `SceneManager` `EntityFactory`                                         | 实体 CRUD；变更通知；场景快照  | 实体 ID 唯一；编辑态速度为零       |
+| 物理     | `PhysicsWorld` `PredictionEngine` `CameraFollowController`             | 刚体映射；碰撞事件；预测模拟   | 预测与播放同源物理配置             |
+| 音频     | `AudioEngine` `PianoSynth`                                             | voice 生命周期；发声触发；限流 | 无 durationMs；音量驱动衰减        |
+| UI       | `CanvasRenderer` `TimelineStaffRenderer` `PanelRenderer` `HudRenderer` | 渲染；用户操作转事件           | 播放态所有编辑 UI 隐藏             |
+| 持久化   | `LocalSaveRepository` `SceneSerializer`                                | 节流/强制保存；恢复；版本迁移  | 存档不含预测数据；mode 存为 "edit" |
 
 ### 主循环帧序（`requestAnimationFrame`）
 
@@ -206,9 +207,9 @@ marble-music/
 
 ```typescript
 // 共享常量
-const FIXED_DT_MS = 1000 / 60;          // 约 16.67ms
-const PREDICTION_MAX_STEPS = 300;        // 约 5 秒预测窗口
-const PREDICTION_DEBOUNCE_MS = 150;      // 编辑操作后去抖时间
+const FIXED_DT_MS = 1000 / 60; // 约 16.67ms
+const PREDICTION_MAX_STEPS = 300; // 约 5 秒预测窗口
+const PREDICTION_DEBOUNCE_MS = 150; // 编辑操作后去抖时间
 ```
 
 ### 预测触发逻辑
@@ -263,7 +264,7 @@ SceneManager.onChange()
 ```typescript
 interface SaveData {
   version: 1;
-  savedAt: string;   // ISO 8601
+  savedAt: string; // ISO 8601
   scene: Scene;
 }
 ```
@@ -272,35 +273,35 @@ interface SaveData {
 
 ### 保存策略
 
-| 触发 | 方式 | 延迟 |
-|------|------|------|
-| 编辑操作后 | 节流保存 | 1000ms |
-| play → edit | 强制保存 | 立即 |
+| 触发                            | 方式     | 延迟                 |
+| ------------------------------- | -------- | -------------------- |
+| 编辑操作后                      | 节流保存 | 1000ms               |
+| play → edit                     | 强制保存 | 立即                 |
 | visibilitychange / beforeunload | 尝试保存 | 立即（受浏览器限制） |
 
 ### 恢复与错误处理
 
-| 状态 | 行为 |
-|------|------|
-| 无数据 | 创建空场景，正常启动 |
-| JSON 解析失败 | 空场景 + HUD 提示"存档损坏" |
-| version > 1 | 空场景 + HUD 提示"存档版本过高" |
-| 实体数据不完整 | 空场景 + HUD 提示"存档数据不完整" |
-| 恢复成功 | 触发一次预测重算，Timeline 显示恢复后场景的预测结果 |
+| 状态           | 行为                                                |
+| -------------- | --------------------------------------------------- |
+| 无数据         | 创建空场景，正常启动                                |
+| JSON 解析失败  | 空场景 + HUD 提示"存档损坏"                         |
+| version > 1    | 空场景 + HUD 提示"存档版本过高"                     |
+| 实体数据不完整 | 空场景 + HUD 提示"存档数据不完整"                   |
+| 恢复成功       | 触发一次预测重算，Timeline 显示恢复后场景的预测结果 |
 
 ---
 
 ## UI Visibility Rules
 
-| 组件 | 编辑态 | 播放态 |
-|------|--------|--------|
-| 右侧积木选择器 | 显示 | **隐藏** |
-| 右侧参数面板 | 显示（选中音乐方块时） | **隐藏** |
-| 底部 Timeline 五线谱 | 显示 | **隐藏** |
-| 预测线（Canvas L5） | 显示 | **不渲染** |
-| 左上模式 HUD | 显示"按 Space 播放" | 显示"播放中...按 Space 停止" |
-| 右上保存 HUD | 显示 | 显示 |
-| 音乐活动脉冲特效 | 不活跃 | **活跃** |
+| 组件                 | 编辑态                 | 播放态                       |
+| -------------------- | ---------------------- | ---------------------------- |
+| 右侧积木选择器       | 显示                   | **隐藏**                     |
+| 右侧参数面板         | 显示（选中音乐方块时） | **隐藏**                     |
+| 底部 Timeline 五线谱 | 显示                   | **隐藏**                     |
+| 预测线（Canvas L5）  | 显示                   | **不渲染**                   |
+| 左上模式 HUD         | 显示"按 Space 播放"    | 显示"播放中...按 Space 停止" |
+| 右上保存 HUD         | 显示                   | 显示                         |
+| 音乐活动脉冲特效     | 不活跃                 | **活跃**                     |
 
 ---
 
@@ -308,50 +309,50 @@ interface SaveData {
 
 ### 单元测试覆盖（Vitest）
 
-| 模块 | 核心测试用例（来自 GDD 08） |
-|------|--------------------------|
-| ModeController | MC-01~MC-06：状态机正确性，canEdit() 权限闸门 |
-| PhysicsWorld | PW-01~PW-04：仅 Ball 运动，碰撞事件输出 |
-| PredictionEngine | PE-01~PE-06：编辑态计算，播放态跳过，PredictedNote 同源 |
-| AudioEngine | AE-01~AE-07：独立 voice，重叠，限流，无 durationMs |
-| LocalSaveRepository | LS-01~LS-06：节流，强制保存，损坏恢复，无 durationMs |
+| 模块                | 核心测试用例（来自 GDD 08）                             |
+| ------------------- | ------------------------------------------------------- |
+| ModeController      | MC-01~MC-06：状态机正确性，canEdit() 权限闸门           |
+| PhysicsWorld        | PW-01~PW-04：仅 Ball 运动，碰撞事件输出                 |
+| PredictionEngine    | PE-01~PE-06：编辑态计算，播放态跳过，PredictedNote 同源 |
+| AudioEngine         | AE-01~AE-07：独立 voice，重叠，限流，无 durationMs      |
+| LocalSaveRepository | LS-01~LS-06：节流，强制保存，损坏恢复，无 durationMs    |
 
 ### 端到端测试覆盖（Playwright）
 
-| 用例组 | 覆盖约束 |
-|--------|---------|
-| E2E-01~03：核心闭环 | C2, C4 |
-| E2E-04~08：Timeline 五线谱 | C2, C3 |
-| E2E-09~12：模式隔离 | C1, C2 |
-| E2E-13~16：播放/停止（无暂停） | C1 |
-| E2E-17~19：多球跟随 | C5 |
-| E2E-20~23：存档恢复 | FR-029~034 |
-| E2E-24~25：音量驱动衰减 | C4 |
+| 用例组                         | 覆盖约束   |
+| ------------------------------ | ---------- |
+| E2E-01~03：核心闭环            | C2, C4     |
+| E2E-04~08：Timeline 五线谱     | C2, C3     |
+| E2E-09~12：模式隔离            | C1, C2     |
+| E2E-13~16：播放/停止（无暂停） | C1         |
+| E2E-17~19：多球跟随            | C5         |
+| E2E-20~23：存档恢复            | FR-029~034 |
+| E2E-24~25：音量驱动衰减        | C4         |
 
 ---
 
 ## Risk Register & Design Decisions
 
-| 风险 ID | 风险描述 | 设计决策 | 缓解措施 |
-|---------|---------|---------|---------|
-| TR-01 | 高频碰撞音频实例激增、爆音 | AudioEngine 双上限保护 | 同帧 ≤16 voice；总活跃 ≤64；超限跳过不崩溃；开发模式显示 voice 计数 |
-| TR-02 | 浏览器音频首帧不稳定 | 延迟初始化 + 静音降级 | 首次用户交互后 `AudioContext.resume()`；未授权时静音继续 |
-| TR-03 | localStorage 配额/权限失败 | 失败可感知 + 不静默 | HUD 持续显示失败提示；下次编辑重试；容量预检（可选） |
-| TR-06 | 预测计算阻塞编辑 | 去抖 + 步数上限 | 150ms 去抖；≤300 步上限（约 5 秒）；Web Worker 作为 v2 可选项 |
-| TR-07 | 预测与实际不一致 | 同源物理配置 | 预测/播放共用相同 Matter.js Engine 配置 + 固定步长；接受微小时间误差 |
+| 风险 ID | 风险描述                   | 设计决策               | 缓解措施                                                             |
+| ------- | -------------------------- | ---------------------- | -------------------------------------------------------------------- |
+| TR-01   | 高频碰撞音频实例激增、爆音 | AudioEngine 双上限保护 | 同帧 ≤16 voice；总活跃 ≤64；超限跳过不崩溃；开发模式显示 voice 计数  |
+| TR-02   | 浏览器音频首帧不稳定       | 延迟初始化 + 静音降级  | 首次用户交互后 `AudioContext.resume()`；未授权时静音继续             |
+| TR-03   | localStorage 配额/权限失败 | 失败可感知 + 不静默    | HUD 持续显示失败提示；下次编辑重试；容量预检（可选）                 |
+| TR-06   | 预测计算阻塞编辑           | 去抖 + 步数上限        | 150ms 去抖；≤300 步上限（约 5 秒）；Web Worker 作为 v2 可选项        |
+| TR-07   | 预测与实际不一致           | 同源物理配置           | 预测/播放共用相同 Matter.js Engine 配置 + 固定步长；接受微小时间误差 |
 
 ---
 
 ## Phase Deliverables Summary
 
-| 产物 | 路径 | 状态 |
-|------|------|------|
-| 需求规格 | `specs/001-music-physics-sandbox/spec.md` | ✅ 已有 |
-| **实现计划** | `specs/001-music-physics-sandbox/plan.md` | ✅ 本文件 |
-| **技术研究** | `specs/001-music-physics-sandbox/research.md` | ✅ Phase 0 产出 |
-| **数据模型** | `specs/001-music-physics-sandbox/data-model.md` | ✅ Phase 1 产出 |
-| **快速启动** | `specs/001-music-physics-sandbox/quickstart.md` | ✅ Phase 1 产出 |
-| **存档契约** | `specs/001-music-physics-sandbox/contracts/sandbox-state.schema.json` | ✅ Phase 1 产出 |
-| **音频契约** | `specs/001-music-physics-sandbox/contracts/audio-trigger.contract.md` | ✅ Phase 1 产出 |
-| **预测契约** | `specs/001-music-physics-sandbox/contracts/prediction.contract.md` | ✅ Phase 1 产出 |
-| 任务拆解 | `specs/001-music-physics-sandbox/tasks.md` | ⏳ 待 tasks 阶段 |
+| 产物         | 路径                                                                  | 状态             |
+| ------------ | --------------------------------------------------------------------- | ---------------- |
+| 需求规格     | `specs/001-music-physics-sandbox/spec.md`                             | ✅ 已有          |
+| **实现计划** | `specs/001-music-physics-sandbox/plan.md`                             | ✅ 本文件        |
+| **技术研究** | `specs/001-music-physics-sandbox/research.md`                         | ✅ Phase 0 产出  |
+| **数据模型** | `specs/001-music-physics-sandbox/data-model.md`                       | ✅ Phase 1 产出  |
+| **快速启动** | `specs/001-music-physics-sandbox/quickstart.md`                       | ✅ Phase 1 产出  |
+| **存档契约** | `specs/001-music-physics-sandbox/contracts/sandbox-state.schema.json` | ✅ Phase 1 产出  |
+| **音频契约** | `specs/001-music-physics-sandbox/contracts/audio-trigger.contract.md` | ✅ Phase 1 产出  |
+| **预测契约** | `specs/001-music-physics-sandbox/contracts/prediction.contract.md`    | ✅ Phase 1 产出  |
+| 任务拆解     | `specs/001-music-physics-sandbox/tasks.md`                            | ⏳ 待 tasks 阶段 |

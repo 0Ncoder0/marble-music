@@ -1,6 +1,6 @@
-import Matter from 'matter-js';
-import { PHYSICS_CONFIG } from '../constants.js';
-import type { Scene, CollisionEvent, Vec2 } from '../scene/types.js';
+import Matter from "matter-js";
+import { PHYSICS_CONFIG } from "../constants.js";
+import type { Scene, CollisionEvent, Vec2 } from "../scene/types.js";
 
 export class PhysicsWorld {
   private readonly _engine: Matter.Engine;
@@ -18,11 +18,11 @@ export class PhysicsWorld {
     this._engine = Matter.Engine.create({
       gravity: {
         x: PHYSICS_CONFIG.gravity.x,
-        y: PHYSICS_CONFIG.gravity.y,
-      },
+        y: PHYSICS_CONFIG.gravity.y
+      }
     });
 
-    Matter.Events.on(this._engine, 'collisionStart', (event) => {
+    Matter.Events.on(this._engine, "collisionStart", event => {
       if (!this._running) return;
 
       for (const pair of event.pairs) {
@@ -36,10 +36,10 @@ export class PhysicsWorld {
         let ballId: string | undefined;
         let musicBlockId: string | undefined;
 
-        if (kindA === 'ball' && kindB === 'music-block' && idA && idB) {
+        if (kindA === "ball" && kindB === "music-block" && idA && idB) {
           ballId = idA;
           musicBlockId = idB;
-        } else if (kindB === 'ball' && kindA === 'music-block' && idB && idA) {
+        } else if (kindB === "ball" && kindA === "music-block" && idB && idA) {
           ballId = idB;
           musicBlockId = idA;
         }
@@ -52,7 +52,7 @@ export class PhysicsWorld {
               musicBlockId,
               noteName: mbData.noteName,
               volume: mbData.volume,
-              timestamp: performance.now(),
+              timestamp: performance.now()
             });
           }
         }
@@ -68,55 +68,43 @@ export class PhysicsWorld {
     this._pendingCollisions = [];
 
     for (const entity of scene.entities) {
-      if (entity.kind === 'ball') {
+      if (entity.kind === "ball") {
         const body = Matter.Bodies.circle(entity.x, entity.y, entity.radius, {
           isStatic: false,
           restitution: PHYSICS_CONFIG.restitution,
           friction: PHYSICS_CONFIG.friction,
           frictionAir: PHYSICS_CONFIG.frictionAir,
-          label: entity.id,
+          label: entity.id
         });
-        (body as unknown as Record<string, unknown>)['plugin'] = { entityId: entity.kind };
+        (body as unknown as Record<string, unknown>)["plugin"] = { entityId: entity.kind };
         this._bodyToEntityId.set(body.id, entity.id);
         this._bodyToEntityKind.set(body.id, entity.kind);
         Matter.World.add(this._engine.world, body);
-      } else if (entity.kind === 'block') {
-        const body = Matter.Bodies.rectangle(
-          entity.x,
-          entity.y,
-          entity.width,
-          entity.height,
-          {
-            isStatic: true,
-            restitution: PHYSICS_CONFIG.restitution,
-            friction: PHYSICS_CONFIG.friction,
-            label: entity.id,
-            angle: entity.rotation,
-          },
-        );
-        (body as unknown as Record<string, unknown>)['plugin'] = { entityId: entity.kind };
+      } else if (entity.kind === "block") {
+        const body = Matter.Bodies.rectangle(entity.x, entity.y, entity.width, entity.height, {
+          isStatic: true,
+          restitution: PHYSICS_CONFIG.restitution,
+          friction: PHYSICS_CONFIG.friction,
+          label: entity.id,
+          angle: entity.rotation
+        });
+        (body as unknown as Record<string, unknown>)["plugin"] = { entityId: entity.kind };
         this._bodyToEntityId.set(body.id, entity.id);
         this._bodyToEntityKind.set(body.id, entity.kind);
         Matter.World.add(this._engine.world, body);
-      } else if (entity.kind === 'music-block') {
-        const body = Matter.Bodies.rectangle(
-          entity.x,
-          entity.y,
-          entity.width,
-          entity.height,
-          {
-            isStatic: true,
-            restitution: PHYSICS_CONFIG.restitution,
-            friction: PHYSICS_CONFIG.friction,
-            label: entity.id,
-          },
-        );
-        (body as unknown as Record<string, unknown>)['plugin'] = { entityId: entity.kind };
+      } else if (entity.kind === "music-block") {
+        const body = Matter.Bodies.rectangle(entity.x, entity.y, entity.width, entity.height, {
+          isStatic: true,
+          restitution: PHYSICS_CONFIG.restitution,
+          friction: PHYSICS_CONFIG.friction,
+          label: entity.id
+        });
+        (body as unknown as Record<string, unknown>)["plugin"] = { entityId: entity.kind };
         this._bodyToEntityId.set(body.id, entity.id);
         this._bodyToEntityKind.set(body.id, entity.kind);
         this._musicBlockData.set(entity.id, {
           noteName: entity.noteName,
-          volume: entity.volume,
+          volume: entity.volume
         });
         Matter.World.add(this._engine.world, body);
       }
@@ -149,7 +137,7 @@ export class PhysicsWorld {
   getBallPositions(): Map<string, Vec2> {
     const positions = new Map<string, Vec2>();
     for (const body of this._engine.world.bodies) {
-      if (this._bodyToEntityKind.get(body.id) === 'ball') {
+      if (this._bodyToEntityKind.get(body.id) === "ball") {
         const id = this._bodyToEntityId.get(body.id);
         if (id) {
           positions.set(id, { x: body.position.x, y: body.position.y });
@@ -163,7 +151,7 @@ export class PhysicsWorld {
     const positions = new Map<string, Vec2>();
     for (const body of this._engine.world.bodies) {
       const kind = this._bodyToEntityKind.get(body.id);
-      if (kind === 'block' || kind === 'music-block') {
+      if (kind === "block" || kind === "music-block") {
         const id = this._bodyToEntityId.get(body.id);
         if (id) {
           positions.set(id, { x: body.position.x, y: body.position.y });

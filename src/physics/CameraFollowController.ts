@@ -1,5 +1,5 @@
-import { FOLLOW_LERP } from '../constants.js';
-import type { CameraState, Vec2 } from '../scene/types.js';
+import { FOLLOW_LERP } from "../constants.js";
+import type { CameraState, Vec2 } from "../scene/types.js";
 
 /**
  * 相机跟随控制器 — US4 T050
@@ -18,7 +18,7 @@ export class CameraFollowController {
       cx: initialCx,
       cy: initialCy,
       zoom: initialZoom,
-      followBallId: null,
+      followBallId: null
     };
   }
 

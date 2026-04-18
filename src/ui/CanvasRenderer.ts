@@ -1,12 +1,12 @@
-import { BASE_DECAY_S, VOLUME_DECAY_SCALE_S } from '../constants.js';
-import type { Scene, CameraState, PredictionResult, Vec2, CollisionEvent } from '../scene/types.js';
+import { BASE_DECAY_S, VOLUME_DECAY_SCALE_S } from "../constants.js";
+import type { Scene, CameraState, PredictionResult, Vec2, CollisionEvent } from "../scene/types.js";
 
 const GRID_SIZE = 40;
-const BALL_COLOR = '#4a90d9';
-const BLOCK_COLOR = '#888888';
-const MUSIC_BLOCK_COLOR = '#7b5ea7';
-const SELECTED_COLOR = '#f5c518';
-const RIPPLE_COLOR_RGB = '247, 185, 24'; // 金黄色，与选中高亮呼应
+const BALL_COLOR = "#4a90d9";
+const BLOCK_COLOR = "#888888";
+const MUSIC_BLOCK_COLOR = "#7b5ea7";
+const SELECTED_COLOR = "#f5c518";
+const RIPPLE_COLOR_RGB = "247, 185, 24"; // 金黄色，与选中高亮呼应
 
 interface Ripple {
   x: number;
@@ -19,11 +19,11 @@ interface Ripple {
 
 /** 预测轨迹颜色池（与 TimelineStaffRenderer 颜色保持一致） */
 export const TRAJECTORY_COLORS = [
-  '#4a90d9', // 蓝（单球默认）
-  '#e67e22', // 橙
-  '#2ecc71', // 绿
-  '#e74c3c', // 红
-  '#9b59b6', // 紫
+  "#4a90d9", // 蓝（单球默认）
+  "#e67e22", // 橙
+  "#2ecc71", // 绿
+  "#e74c3c", // 红
+  "#9b59b6" // 紫
 ];
 
 export class CanvasRenderer {
@@ -38,8 +38,8 @@ export class CanvasRenderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this._canvas = canvas;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Unable to get 2D context from canvas');
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Unable to get 2D context from canvas");
     this._ctx = ctx;
   }
 
@@ -61,7 +61,7 @@ export class CanvasRenderer {
         volume: event.volume,
         baseRadius: 20 + event.volume * 20,
         createdAt: now,
-        duration,
+        duration
       });
     }
   }
@@ -79,12 +79,7 @@ export class CanvasRenderer {
     this._activeRipples.length = 0;
   }
 
-  render(
-    scene: Scene,
-    cameraState: CameraState,
-    predictionResult: PredictionResult | null,
-    physicsPositions?: Map<string, Vec2>,
-  ): void {
+  render(scene: Scene, cameraState: CameraState, predictionResult: PredictionResult | null, physicsPositions?: Map<string, Vec2>): void {
     const { _canvas: canvas, _ctx: ctx } = this;
     const { width, height } = canvas;
 
@@ -102,13 +97,13 @@ export class CanvasRenderer {
 
     // L1: 静态方块（灰色）
     for (const entity of scene.entities) {
-      if (entity.kind === 'block') {
+      if (entity.kind === "block") {
         ctx.save();
         ctx.translate(entity.x, entity.y);
         ctx.rotate(entity.rotation);
         ctx.fillStyle = BLOCK_COLOR;
         ctx.fillRect(-entity.width / 2, -entity.height / 2, entity.width, entity.height);
-        ctx.strokeStyle = '#555';
+        ctx.strokeStyle = "#555";
         ctx.lineWidth = 1;
         ctx.strokeRect(-entity.width / 2, -entity.height / 2, entity.width, entity.height);
         ctx.restore();
@@ -118,20 +113,20 @@ export class CanvasRenderer {
     // L2: 音乐方块（紫色 + 中心白色音名文字），同时更新位置缓存供 L6 使用
     this._musicBlockPositions.clear();
     for (const entity of scene.entities) {
-      if (entity.kind === 'music-block') {
+      if (entity.kind === "music-block") {
         this._musicBlockPositions.set(entity.id, { x: entity.x, y: entity.y });
         ctx.save();
         ctx.translate(entity.x, entity.y);
         ctx.fillStyle = MUSIC_BLOCK_COLOR;
         ctx.fillRect(-entity.width / 2, -entity.height / 2, entity.width, entity.height);
-        ctx.strokeStyle = '#5a3a87';
+        ctx.strokeStyle = "#5a3a87";
         ctx.lineWidth = 1;
         ctx.strokeRect(-entity.width / 2, -entity.height / 2, entity.width, entity.height);
 
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = "#ffffff";
         ctx.font = `${Math.max(10, entity.height * 0.6)}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
         ctx.fillText(entity.noteName, 0, 0);
         ctx.restore();
       }
@@ -140,7 +135,7 @@ export class CanvasRenderer {
     // L3: 小球（多球使用颜色池区分）
     let ballIndex = 0;
     for (const entity of scene.entities) {
-      if (entity.kind === 'ball') {
+      if (entity.kind === "ball") {
         const pos = physicsPositions?.get(entity.id);
         const bx = pos?.x ?? entity.x;
         const by = pos?.y ?? entity.y;
@@ -151,16 +146,16 @@ export class CanvasRenderer {
         ctx.arc(bx, by, entity.radius, 0, Math.PI * 2);
         ctx.fillStyle = ballColor;
         ctx.fill();
-        ctx.strokeStyle = isSelected ? SELECTED_COLOR : '#2a60a9';
+        ctx.strokeStyle = isSelected ? SELECTED_COLOR : "#2a60a9";
         ctx.lineWidth = isSelected ? 2 : 1.5;
         ctx.stroke();
 
         // 多球时在球旁显示编号标识（与 TimelineStaffRenderer 谱线颜色一致）
-        if (scene.entities.filter((e) => e.kind === 'ball').length > 1) {
-          ctx.fillStyle = '#ffffff';
+        if (scene.entities.filter(e => e.kind === "ball").length > 1) {
+          ctx.fillStyle = "#ffffff";
           ctx.font = `bold ${Math.max(9, entity.radius * 0.7)}px sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
           ctx.fillText(String(ballIndex + 1), bx, by);
         }
 
@@ -171,47 +166,33 @@ export class CanvasRenderer {
 
     // L4: 选中高亮（虚线黄色轮廓）
     if (scene.selectedBallId) {
-      const selected = scene.entities.find((e) => e.id === scene.selectedBallId);
+      const selected = scene.entities.find(e => e.id === scene.selectedBallId);
       if (selected) {
         ctx.save();
         ctx.setLineDash([4, 4]);
         ctx.strokeStyle = SELECTED_COLOR;
         ctx.lineWidth = 2;
 
-        if (selected.kind === 'ball') {
+        if (selected.kind === "ball") {
           ctx.beginPath();
           ctx.arc(selected.x, selected.y, selected.radius + 4, 0, Math.PI * 2);
           ctx.stroke();
-        } else if (selected.kind === 'block') {
+        } else if (selected.kind === "block") {
           ctx.translate(selected.x, selected.y);
           ctx.rotate(selected.rotation);
-          ctx.strokeRect(
-            -selected.width / 2 - 4,
-            -selected.height / 2 - 4,
-            selected.width + 8,
-            selected.height + 8,
-          );
-        } else if (selected.kind === 'music-block') {
+          ctx.strokeRect(-selected.width / 2 - 4, -selected.height / 2 - 4, selected.width + 8, selected.height + 8);
+        } else if (selected.kind === "music-block") {
           // MusicBlock 选中高亮：虚线矩形轮廓
           ctx.translate(selected.x, selected.y);
-          ctx.strokeRect(
-            -selected.width / 2 - 4,
-            -selected.height / 2 - 4,
-            selected.width + 8,
-            selected.height + 8,
-          );
+          ctx.strokeRect(-selected.width / 2 - 4, -selected.height / 2 - 4, selected.width + 8, selected.height + 8);
 
           // 在实体左上角额外标注当前音名（防遮挡中心文字）
           ctx.setLineDash([]);
           ctx.fillStyle = SELECTED_COLOR;
-          ctx.font = '11px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(
-            selected.noteName,
-            -selected.width / 2 - 4,
-            -selected.height / 2 - 6,
-          );
+          ctx.font = "11px sans-serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "bottom";
+          ctx.fillText(selected.noteName, -selected.width / 2 - 4, -selected.height / 2 - 6);
         }
         ctx.restore();
       }
@@ -265,10 +246,7 @@ export class CanvasRenderer {
   }
 
   /** L5: 绘制各球的预测轨迹（虚线，半透明） */
-  private _drawPredictionTrajectories(
-    ctx: CanvasRenderingContext2D,
-    trajectories: Map<string, { x: number; y: number }[]>,
-  ): void {
+  private _drawPredictionTrajectories(ctx: CanvasRenderingContext2D, trajectories: Map<string, { x: number; y: number }[]>): void {
     const ballIds = [...trajectories.keys()];
     if (ballIds.length === 0) return;
 
@@ -295,12 +273,7 @@ export class CanvasRenderer {
     ctx.restore();
   }
 
-  private _drawGrid(
-    ctx: CanvasRenderingContext2D,
-    camera: CameraState,
-    viewW: number,
-    viewH: number,
-  ): void {
+  private _drawGrid(ctx: CanvasRenderingContext2D, camera: CameraState, viewW: number, viewH: number): void {
     const step = GRID_SIZE;
     const left = camera.cx - viewW / (2 * camera.zoom);
     const top = camera.cy - viewH / (2 * camera.zoom);
@@ -308,7 +281,7 @@ export class CanvasRenderer {
     const bottom = camera.cy + viewH / (2 * camera.zoom);
 
     ctx.save();
-    ctx.strokeStyle = 'rgba(200,200,200,0.3)';
+    ctx.strokeStyle = "rgba(200,200,200,0.3)";
     ctx.lineWidth = 0.5 / camera.zoom;
 
     const startX = Math.floor(left / step) * step;

@@ -13,30 +13,30 @@
 
 ## Summary
 
-| 指标 | 值 |
-|------|----|
-| **总任务数** | **76** |
-| Phase 1 — Setup（T001~T008） | 8 |
-| Phase 2 — Foundational（T009~T018） | 10 |
-| Phase 3 — US1（核心闭环 P1，T019~T032） | 14 |
-| Phase 4 — US2（预测+五线谱 P2，T033~T042） | 10 |
-| Phase 5 — US3（音乐参数面板 P2，T043~T049） | 7 |
-| Phase 6 — US4（多球+相机跟随 P3，T050~T057） | 8 |
-| Phase 7 — US5（持久化 P3，T058~T067） | 10 |
-| Phase 8 — Polish（T068~T076） | 9 |
-| **推荐 MVP 范围** | **Phase 1 + 2 + 3（T001~T032，共 32 任务）** |
+| 指标                                         | 值                                           |
+| -------------------------------------------- | -------------------------------------------- |
+| **总任务数**                                 | **76**                                       |
+| Phase 1 — Setup（T001~T008）                 | 8                                            |
+| Phase 2 — Foundational（T009~T018）          | 10                                           |
+| Phase 3 — US1（核心闭环 P1，T019~T032）      | 14                                           |
+| Phase 4 — US2（预测+五线谱 P2，T033~T042）   | 10                                           |
+| Phase 5 — US3（音乐参数面板 P2，T043~T049）  | 7                                            |
+| Phase 6 — US4（多球+相机跟随 P3，T050~T057） | 8                                            |
+| Phase 7 — US5（持久化 P3，T058~T067）        | 10                                           |
+| Phase 8 — Polish（T068~T076）                | 9                                            |
+| **推荐 MVP 范围**                            | **Phase 1 + 2 + 3（T001~T032，共 32 任务）** |
 
 ---
 
 ## Independent Test Criteria
 
-| User Story | 优先级 | 独立测试标准 |
-|------------|--------|------------|
-| US1 — 核心闭环 | P1 | 空场景放置 1 个小球 + 1 个音乐方块 → Space → 验证小球下落 + 碰撞时产生可闻声音；再按 Space → 返回编辑态 |
-| US2 — 编辑预测 | P2 | 放置小球 + 音乐方块 → 验证画布出现虚线轨迹 + 底部五线谱音符；移动音乐方块 → 验证五线谱音符时间位置更新 |
-| US3 — 音乐参数 | P2 | 选中音乐方块 → 将音名 C4 改为 G4 → 五线谱音符纵向位置改变；将音量从 0.5 调至 0.1 → 播放后声音明显更短促 |
-| US4 — 相机跟随 | P3 | 放置 2 个小球 → 点击选中球 A → Space 播放 → 验证相机平滑追踪球 A；停止 → 不选中任何球 → Space → 相机不自动移动 |
-| US5 — 持久化 | P3 | 放置 3 个音乐方块 + 各自调整音名 → 等待"已保存"提示 → 刷新页面 → 验证位置和音名与刷新前完全一致，五线谱显示相同预测结果 |
+| User Story     | 优先级 | 独立测试标准                                                                                                            |
+| -------------- | ------ | ----------------------------------------------------------------------------------------------------------------------- |
+| US1 — 核心闭环 | P1     | 空场景放置 1 个小球 + 1 个音乐方块 → Space → 验证小球下落 + 碰撞时产生可闻声音；再按 Space → 返回编辑态                 |
+| US2 — 编辑预测 | P2     | 放置小球 + 音乐方块 → 验证画布出现虚线轨迹 + 底部五线谱音符；移动音乐方块 → 验证五线谱音符时间位置更新                  |
+| US3 — 音乐参数 | P2     | 选中音乐方块 → 将音名 C4 改为 G4 → 五线谱音符纵向位置改变；将音量从 0.5 调至 0.1 → 播放后声音明显更短促                 |
+| US4 — 相机跟随 | P3     | 放置 2 个小球 → 点击选中球 A → Space 播放 → 验证相机平滑追踪球 A；停止 → 不选中任何球 → Space → 相机不自动移动          |
+| US5 — 持久化   | P3     | 放置 3 个音乐方块 + 各自调整音名 → 等待"已保存"提示 → 刷新页面 → 验证位置和音名与刷新前完全一致，五线谱显示相同预测结果 |
 
 ---
 
@@ -128,7 +128,7 @@
 - [x] T035 [US2] 扩展 `src/scene/SceneManager.ts`：在 `onChange` 回调链末尾调用 `predictionEngine.markDirty()`（通过构造注入或 `setPredictionEngine(engine)` setter）；扩展 `src/app/GameApp.ts` 帧序步骤 3：`[仅 edit 且场景脏] predictionEngine.runIfDirty()` 调用（内部由去抖 setTimeout 控制，不在此处额外包装）：`src/scene/SceneManager.ts`、`src/app/GameApp.ts`
 - [x] T036 [US2] 扩展 `src/app/GameApp.ts` 模式切换序列（填充 US2 相关步骤）：Edit→Play 序列步骤 4（CanvasRenderer.disablePredictionLayer()）+ 步骤 5（PredictionEngine.pause()）；Play→Edit 序列步骤 5（PredictionEngine.resume()）+ 步骤 7（PredictionEngine.invalidate()，触发立即重算）：`src/app/GameApp.ts`
 - [x] T037 [US2] 扩展 `src/ui/CanvasRenderer.ts` 实现 L5 层（预测线渲染）：编辑态从 `PredictionResult.trajectories` 读取每个球的轨迹点序列；用 `setLineDash([5,5])` + `globalAlpha = 0.4` 绘制虚线轨迹，每个球使用与球体相同的颜色区分；实现 `disablePredictionLayer()` / `enablePredictionLayer()`；`getLatestResult() === null` 时跳过 L5 绘制（不报错）；播放态 `render()` 调用时 L5 完全跳过：`src/ui/CanvasRenderer.ts`
-- [x] T038 [P] [US2] 创建 `src/ui/TimelineStaffRenderer.ts`：接受 `timelineCanvas: HTMLCanvasElement`；`render(predictedNotes: PredictedNote[], mode: AppMode): void`：play 态 `ctx.clearRect` 后直接返回（不渲染）；edit 态按 ballId 分组，每组渲染一行五线谱轨道（5 线间距）；`timeMs` 映射横轴（0~PREDICTION_MAX_STEPS*FIXED_DT_MS）；`noteName` 映射纵轴（音名→线谱位置，C4 中央，上高下低）；`volume` 映射音符椭圆尺寸/透明度；各球谱线用颜色标识区分；`getLatestResult() === null` 时渲染空谱线（5 条横线，无音符）；`hide() / show()` 控制 canvas 元素 `display` 样式：`src/ui/TimelineStaffRenderer.ts`
+- [x] T038 [P] [US2] 创建 `src/ui/TimelineStaffRenderer.ts`：接受 `timelineCanvas: HTMLCanvasElement`；`render(predictedNotes: PredictedNote[], mode: AppMode): void`：play 态 `ctx.clearRect` 后直接返回（不渲染）；edit 态按 ballId 分组，每组渲染一行五线谱轨道（5 线间距）；`timeMs` 映射横轴（0~PREDICTION_MAX_STEPS\*FIXED_DT_MS）；`noteName` 映射纵轴（音名→线谱位置，C4 中央，上高下低）；`volume` 映射音符椭圆尺寸/透明度；各球谱线用颜色标识区分；`getLatestResult() === null` 时渲染空谱线（5 条横线，无音符）；`hide() / show()` 控制 canvas 元素 `display` 样式：`src/ui/TimelineStaffRenderer.ts`
 - [x] T039 [US2] 扩展 `src/app/GameApp.ts` 帧序步骤 8：`TimelineStaffRenderer.render(predictionEngine.getLatestResult()?.predictedNotes ?? [], modeController.mode)` 每帧调用；Play→Edit 序列步骤 6 调用 `TimelineStaffRenderer.show()`；Edit→Play 序列步骤 3 调用 `TimelineStaffRenderer.hide()`：`src/app/GameApp.ts`
 - [x] T040 [P] [US2] 创建 `tests/e2e/timeline-staff.spec.ts`，实现 E2E-04~E2E-08：放置积木后 Timeline 五线谱实时更新出现音符（E2E-04）；移动音乐方块位置后五线谱音符时间轴位置变化（E2E-05）；修改音乐方块音名后五线谱音符纵轴位置变化（E2E-06，test.skip，依赖 US3 PanelRenderer）；多球场景显示独立谱线（E2E-07）；删除所有音乐方块后五线谱为空谱线（E2E-08）；补充 E2E-01（放置积木后五线谱出现预测音符）：`tests/e2e/timeline-staff.spec.ts`；**最小增强**：在 `src/env.d.ts` 和 `src/app/GameApp.ts` 的 `window.__debugState.prediction` 中新增 `notes[]` 字段（timeMs/noteName/ballId/musicBlockId），供 E2E-05/07 断言时间轴变化和多球 ballId 验证，不展开 Phase 8 调试面板。
 - [x] T041 [US2] 执行 `pnpm test` 验证 PE-01~PE-06 全部通过（26 单测 0 failed）；执行 `pnpm test:e2e tests/e2e/timeline-staff.spec.ts` 验证 E2E-01/04/05/07/08 通过（5 passed，1 skipped E2E-06）；执行 `pnpm run tsc --noEmit` 验证 0 类型错误：（验证任务，无新文件）
@@ -266,27 +266,33 @@ Phase 1 (Setup)
 ## Parallel Opportunities（并行机会）
 
 ### Phase 1
+
 - T005（vitest.config.ts）与 T006（playwright.config.ts）可同时创建
 
 ### Phase 2
+
 - T012（ModeController 单测）、T013（EntityFactory）、T014（SceneManager）在 T011 完成后可并行
 - T015（main.ts）与 T016（GameApp 骨架）可并行
 
 ### Phase 3 (US1)
+
 - T019（PhysicsWorld 单测）与 T021（PhysicsWorld 实现）同时开始（TDD 模式）
 - T020（AudioEngine 单测）可在 T022 开始时并行编写
 - T022（AudioEngine）、T024（CanvasRenderer）、T025（HudRenderer）彼此独立，三者可并行
 - T029（core-loop E2E）与 T030（mode-isolation E2E）可并行创建
 
 ### Phase 4 (US2)
+
 - T033（PredictionEngine 单测）与 T034（PredictionEngine 实现）同时开始
 - T038（TimelineStaffRenderer）与 T037（CanvasRenderer L5 扩展）可并行
 - T040（E2E timeline-staff）与 T037/T038 实现并行编写
 
 ### Phase 5 (US3)
+
 - T046（CanvasRenderer MusicBlock 高亮）与 T043/T044 并行
 
 ### Phase 6 + 7 并行（最大化并行机会）
+
 - **US4 全部任务（T050~T057）与 US5 全部任务（T058~T067）在 US1 完成后可完全并行**
 - 单人开发时建议顺序：US4 → US5（US4 更简单，US5 测试较重）
 - 双人开发时建议：A 做 US4，B 做 US5
@@ -300,6 +306,7 @@ Phase 1 (Setup)
 **包含**: Phase 1 + Phase 2 + Phase 3（US1）= **T001~T032**（共 32 个任务）
 
 **交付物**: 可在浏览器运行的 Vite + TypeScript 项目，实现：
+
 - ✅ 在画布上放置小球、方块、音乐方块
 - ✅ 按 Space 进入播放模式，物理引擎驱动小球受重力运动
 - ✅ 小球碰撞音乐方块时触发钢琴音符发声（<20ms 延迟）
@@ -310,6 +317,7 @@ Phase 1 (Setup)
 **MVP 不包含**: 预测线（US2）、Timeline 五线谱（US2）、音乐参数面板（US3）、相机跟随（US4）、自动保存（US5）、脉冲特效（Polish）
 
 **MVP 验收标准**:
+
 1. `pnpm test` — MC + PW + AE 共 17 项单元测试全部通过
 2. `pnpm test:e2e tests/e2e/core-loop.spec.ts` — E2E-02/13/14/15 通过
 3. 手动冒烟：US1 独立测试（放置 → 播放 → 发声 → 返回编辑）全程无崩溃
